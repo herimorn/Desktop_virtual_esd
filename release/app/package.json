@@ -1,12 +1,12 @@
 {
-  "name": "electron-react-boilerplate",
+  "name": "Virtual_ESD",
   "version": "4.6.0",
-  "description": "A foundation for scalable desktop apps",
+  "description": "Our Customer is Our Preority",
   "license": "MIT",
   "author": {
-    "name": "Electron React Boilerplate Maintainers",
-    "email": "electronreactboilerplate@gmail.com",
-    "url": "https://github.com/electron-react-boilerplate"
+    "name": "Virtual_ESD",
+    "email": "virtualESD.com",
+    "url": "https://hrimornix@gmail.com"
   },
   "main": "./dist/main/main.js",
   "scripts": {
@@ -15,6 +15,15 @@
     "link-modules": "node -r ts-node/register ../../.erb/scripts/link-modules.ts"
   },
   "dependencies": {
-    "sqlite3": "^5.1.4"
+    "@types/node": "^22.5.4",
+    "aws-sdk": "^2.1691.0",
+    "mock-aws-s3": "^4.0.2",
+    "nock": "^13.5.5",
+    "node-forge": "^1.3.1",
+    "sqlite3": "5.1.6"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^2.4.3"
   }
 }

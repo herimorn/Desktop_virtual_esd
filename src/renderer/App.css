@@ -1,62 +1,115 @@
-/*
- * @NOTE: Prepend a `~` to css file paths that are in your node_modules
- *        See https://github.com/webpack-contrib/sass-loader#imports
- */
-body {
-  position: relative;
-  color: white;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'applCustom'; /* Name your font family */
+  src: url('../../assets/font/Nunito-Light.ttf'); /* Locate the .ttf file within your directory*/
+}
+
+/* css */
+body{
+
+ background-color: rgb(241, 245, 241);
+ font-family:'applCustom';
+
+}
+.customFont{
+  font-family:'applCustom';
+
+}
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 100vh;
-  background: linear-gradient(
-    200.96deg,
-    #fedc2a -29.09%,
-    #dd5789 51.77%,
-    #7a2c9e 129.35%
-  );
-  font-family: sans-serif;
-  overflow-y: hidden;
+}
+
+.loading-spinner {
+  border: 16px solid #f3f3f3; /* Light grey */
+  border-top: #57585a; /* Blue */
+  border-radius: 50%;
+  width: 120px;
+  height: 120px;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@font-face {
+  font-family: 'CustomFont'; /* Name your font family */
+  src: url('../../assets/font/Nunito-Light.ttf'); /* Locate the .ttf file within your directory*/
+}
+
+.fontCustomer{
+
+font-family:'CustomFont';
+
+}
+.mb-4{
+
+  font-family:'CustomFont';
+}
+
+.fontCss{
+  font-family:'CustomFont';
+
+}
+
+/* CustomModal.css */
+.modal-title {
+  font-weight: bold;
+}
+
+.modal-header {
+  background-color: #f7f7f7;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: space-between;
 }
 
-button {
-  background-color: white;
-  padding: 10px 20px;
-  border-radius: 10px;
-  border: none;
-  appearance: none;
-  font-size: 1.3rem;
-  box-shadow: 0px 8px 28px -6px rgba(24, 39, 75, 0.12),
-    0px 18px 88px -4px rgba(24, 39, 75, 0.14);
-  transition: all ease-in 0.1s;
-  cursor: pointer;
-  opacity: 0.9;
+.form-group {
+  margin-bottom: 1rem;
 }
 
-button:hover {
-  transform: scale(1.05);
-  opacity: 1;
+.text-end mb-3
+{
+  margin-top: 300;
+}
+.Supplire{
+  font-family:'CustomFont';
+
+}
+.colorStyle{
+
+  background-color:#57585a ;
 }
 
-li {
-  list-style: none;
+.purcharse{
+  font-family:'CustomFont';
 }
+.Product{
 
-a {
-  text-decoration: none;
-  height: fit-content;
-  width: fit-content;
-  margin: 10px;
+  font-family:'CustomFont';
 }
+.font{
+  font-family:'CustomFont';
 
-a:hover {
-  opacity: 1;
-  text-decoration: none;
 }
+.pagination{
 
-.Hello {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 20px 0;
+  text-align: center;
+}
+.bg-color{
+
+background-color: #5a5757;
 }

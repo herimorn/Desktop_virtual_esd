@@ -1,0 +1,36 @@
+.customization-container {
+    max-width: 1200px;
+    margin: auto;
+  }
+  
+  .edit-mode-btn {
+    font-weight: bold;
+  }
+  
+  .edit-tools-container {
+    display: flex;
+    align-items: flex-start;
+  }
+  
+  .edit-tools {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+  }
+  
+  .tool-buttons .tool-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100px;
+    height: 100px;
+  }
+  
+  .tool-buttons .tool-btn span {
+    display: block;
+    text-align: center;
+  }
+  
+  .tool-buttons .tool-btn:hover {
+    background-color: #f0f0f0;
+  }
+  

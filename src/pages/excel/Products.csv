@@ -1,0 +1,5 @@
+id,name,description,price,quantity,tax,itemType,packagingUnit,quantityUnit
+1,Dettol,dettol,10,0,1,Raw Material,Ampoule,kg
+2,Azam Embe,Test,800,0,4,Raw Material,Ampoule,gram
+3,Mo  enery,dettol,10,0,5,Raw Material,Ampoule,kg
+4,Azam Tunda,Test,800,0,1,Raw Material,Ampoule,gram

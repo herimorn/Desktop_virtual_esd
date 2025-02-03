@@ -1,0 +1,29 @@
+{
+  "counties": [
+    { "name": "Tanzania", "code": "TZ" },
+    { "name": "Kenya", "code": "KE" },
+    { "name": "Uganda", "code": "UG" }
+  ],
+  "itemTypes": [
+    { "name": "Type1", "code": "T1" },
+    { "name": "Type2", "code": "T2" },
+    { "name": "Type3", "code": "T3" }
+  ],
+  "packagingUnits": [
+    { "name": "Unit1", "code": "U1" },
+    { "name": "Unit2", "code": "U2" },
+    { "name": "Unit3", "code": "U3" }
+  ],
+  "quantityUnits": [
+    { "name": "kg", "code": "KG" },
+    { "name": "gram", "code": "G" },
+    { "name": "litres", "code": "L" },
+    { "name": "tones", "code": "T" },
+    { "name": "ml", "code": "ML" },
+    { "name": "oz", "code": "OZ" },
+    { "name": "pounds", "code": "LB" },
+    { "name": "gallons", "code": "GAL" },
+    { "name": "cuft", "code": "CUFT" },
+    { "name": "cuin", "code": "CUIN" }
+  ]
+}

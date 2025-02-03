@@ -1,0 +1,564 @@
+import React, { useState, useEffect, ChangeEvent } from 'react';
+import {
+  Container,
+  Row,
+  Col,
+  Button,
+  Table,
+  Modal,
+  Form,
+  Pagination,
+  InputGroup,
+  FormControl,
+} from 'react-bootstrap';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { Header } from '../Layouts/nav';
+import { Sidebar } from '../Layouts/sidebar';
+import { useNavigate } from 'react-router-dom';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Swal from 'sweetalert2';
+
+export interface Purchase {
+  total_tax: any;
+  id?: number;
+  supplier_id: number;
+  date: string;
+  payment_type: string;
+  items: PurchaseItem[];
+  expenses: Expense[];
+  total_amount: number;
+  supplier_name?: string;
+}
+
+export interface PurchaseItem {
+  product_id: number;
+  quantity: number;
+  price: number;
+  product_name?: string;
+  tax_rate?: string;
+}
+
+export interface Expense {
+  id: number;
+  category?: string;
+  amount: number;
+}
+
+export interface Product {
+  id: number;
+  name: string;
+  tax_rate: string;
+}
+
+export interface Supplier {
+  id: number;
+  name: string;
+}
+
+const Purchase: React.FC = () => {
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [filteredPurchases, setFilteredPurchases] = useState<Purchase[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
+  const [showModal, setShowModal] = useState(false);
+  const [isViewing, setIsViewing] = useState(false);
+  const [currentPurchase, setCurrentPurchase] = useState<Purchase | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [newItem, setNewItem] = useState<PurchaseItem>({
+    product_id: 0,
+    quantity: 0,
+    price: 0,
+  });
+  const [newExpense, setNewExpense] = useState<Expense>({
+    id: 0,
+    amount: 0,
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
+  const [yearFilter, setYearFilter] = useState('');
+  const [paymentType, setPaymentType] = useState('');
+  const navigate = useNavigate();
+  const paymentTypes = ['Cash', 'Credit Card', 'Bank Transfer'];
+  console.log("currentPurchase is",currentPurchase?.expenses)
+  console.log("expenses is",expenses)
+
+  useEffect(() => {
+    fetchPurchases();
+    fetchProducts();
+    fetchSuppliers();
+    fetchExpenses();
+  }, []);
+
+  useEffect(() => {
+    setFilteredPurchases(filterPurchases());
+  }, [purchases, searchQuery, dateFilter, monthFilter, yearFilter]);
+
+  const fetchPurchases = async () => {
+    const purchases = await window.electron.fetchPurchases();
+    setPurchases(purchases);
+  };
+
+  const fetchProducts = async () => {
+    const products = await window.electron.fetchProducts();
+    setProducts(products);
+  };
+
+  const fetchSuppliers = async () => {
+    const suppliers = await window.electron.fetchSuppliers();
+    setSuppliers(suppliers);
+  };
+
+  const fetchExpenses = async () => {
+    const expenses = await window.electron.fetchExpenses();
+    setExpenses(expenses);
+  };
+
+  const handleAddPurchase = () => {
+    setCurrentPurchase({
+      id: 0,
+      supplier_id: 0,
+      date: '',
+      payment_type: '',
+      items: [],
+      expenses: [],
+      total_amount: 0,
+    });
+    setIsViewing(false);
+    setShowModal(true);
+  };
+
+  const handleEditPurchase = (purchase: Purchase) => {
+    setCurrentPurchase(purchase);
+    setIsViewing(false);
+    setShowModal(true);
+  };
+
+  const handleViewPurchase = (purchase: Purchase) => {
+    setCurrentPurchase(purchase);
+    setIsViewing(true);
+    setShowModal(true);
+  };
+
+  const handleDeletePurchase = async (purchaseId: number) => {
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!',
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await window.electron.deletePurchase(purchaseId);
+        toast.success('Purchase deleted successfully!');
+        fetchPurchases();
+      } catch (error) {
+        console.error('Error deleting purchase', error);
+        toast.error('Error deleting purchase.');
+      }
+    }
+  };
+
+  const handleSavePurchase = async () => {
+    if (currentPurchase) {
+      console.log("the current purchase",currentPurchase)
+      // Add validation logic
+      if (
+        !currentPurchase.supplier_id ||
+        !currentPurchase.date ||
+        !currentPurchase.payment_type ||
+        currentPurchase.items.length === 0 ||
+        currentPurchase.items.some(item => item.product_id === 0 || item.quantity === 0 || item.price === 0) ||
+        currentPurchase.expenses.length === 0 ||
+        currentPurchase.expenses.some(expense => expense.id === 0 )
+      ) {
+        toast.error('Please fill in all required fields and ensure no item or expense is empty.');
+        return;
+      }
+
+      try {
+        if (currentPurchase.id) {
+          await window.electron.updatePurchase(currentPurchase);
+          toast.success('Purchase updated successfully');
+        } else {
+          await window.electron.addPurchase(currentPurchase);
+          toast.success('Purchase added successfully');
+        }
+        fetchPurchases();
+        setShowModal(false);
+      } catch (error) {
+        toast.error('Error saving purchase');
+      }
+    }
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+  };
+
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleDateChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setDateFilter(event.target.value);
+  };
+
+  const handleMonthChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setMonthFilter(event.target.value);
+  };
+
+  const handleYearChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setYearFilter(event.target.value);
+  };
+
+  const filterPurchases = (): Purchase[] => {
+    return purchases.filter(purchase => {
+      const matchesSearchQuery =
+        searchQuery === '' ||
+        purchase.supplier_name?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesDateFilter =
+        dateFilter === '' || purchase.date === dateFilter;
+
+      const matchesMonthFilter =
+        monthFilter === '' || purchase.date.includes(`-${monthFilter.padStart(2, '0')}-`);
+
+      const matchesYearFilter =
+        yearFilter === '' || purchase.date.startsWith(yearFilter);
+
+      return matchesSearchQuery && matchesDateFilter && matchesMonthFilter && matchesYearFilter;
+    });
+  };
+
+  const handleItemChange = (event: ChangeEvent<HTMLInputElement>, index: number) => {
+    const { name, value } = event.target;
+    const updatedItems = [...(currentPurchase?.items || [])];
+    const updatedItem = { ...updatedItems[index], [name]: value };
+    updatedItems[index] = updatedItem;
+    setCurrentPurchase(prevPurchase => prevPurchase ? { ...prevPurchase, items: updatedItems } : null);
+  };
+
+  const handleExpenseChange = (event: ChangeEvent<HTMLInputElement>, index: number) => {
+    const { name, value } = event.target;
+    const updatedExpenses = [...(currentPurchase?.expenses || [])];
+    const updatedExpense = { ...updatedExpenses[index], [name]: value };
+    updatedExpenses[index] = updatedExpense;
+    setCurrentPurchase(prevPurchase => prevPurchase ? { ...prevPurchase, expenses: updatedExpenses } : null);
+  };
+
+  const handleNewItemChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setNewItem({ ...newItem, [name]: value });
+  };
+
+  const handleNewExpenseChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setNewExpense({ ...newExpense, [name]: value });
+  };
+
+  const handleAddItem = () => {
+    if (currentPurchase) {
+      setCurrentPurchase(prevPurchase => prevPurchase ? { ...prevPurchase, items: [...prevPurchase.items, newItem] } : null);
+      setNewItem({ product_id: 0, quantity: 0, price: 0 });
+    }
+  };
+
+  const handleAddExpense = () => {
+    if (currentPurchase) {
+      setCurrentPurchase(prevPurchase => prevPurchase ? { ...prevPurchase, expenses: [...prevPurchase.expenses, newExpense] } : null);
+      setNewExpense({ id: 0, amount: 0 });
+    }
+  };
+
+  const renderPagination = () => {
+    const pageNumbers: number[] = [];
+    for (let i = 1; i <= Math.ceil(filteredPurchases.length / itemsPerPage); i++) {
+      pageNumbers.push(i);
+    }
+
+    return (
+      <Pagination>
+        {pageNumbers.map((number) => (
+          <Pagination.Item
+            key={number}
+            active={number === currentPage}
+            onClick={() => setCurrentPage(number)}
+          >
+            {number}
+          </Pagination.Item>
+        ))}
+      </Pagination>
+    );
+  };
+
+  return (
+    <Container fluid>
+      <ToastContainer />
+      <Row>
+        <Header />
+      </Row>
+      <Row>
+        <Col md={2}>
+          <Sidebar />
+        </Col>
+        <Col md={10}>
+          <h1>Manage Purchases</h1>
+          <Button onClick={handleAddPurchase} variant="primary">
+            Add Purchase
+          </Button>
+          <Form>
+            <InputGroup className="mb-3">
+              <FormControl
+                placeholder="Search by supplier name"
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
+            </InputGroup>
+            <Row>
+              <Col>
+                <Form.Group controlId="dateFilter">
+                  <Form.Label>Date Filter</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={dateFilter}
+                    onChange={handleDateChange}
+                  />
+                </Form.Group>
+              </Col>
+              <Col>
+                <Form.Group controlId="monthFilter">
+                  <Form.Label>Month Filter</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="MM"
+                    value={monthFilter}
+                    onChange={handleMonthChange}
+                  />
+                </Form.Group>
+              </Col>
+              <Col>
+                <Form.Group controlId="yearFilter">
+                  <Form.Label>Year Filter</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="YYYY"
+                    value={yearFilter}
+                    onChange={handleYearChange}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+          </Form>
+
+          <Table striped bordered hover>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Supplier</th>
+                <th>Date</th>
+                <th>Total Amount</th>
+                <th>Outstanding Amount</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPurchases
+                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                .map((purchase) => (
+                  <tr key={purchase.id}>
+                    <td>{purchase.id}</td>
+                    <td>{purchase.supplier_name}</td>
+                    <td>{purchase.date}</td>
+                    <td>{purchase.total_amount}</td>
+                    <td>{purchase.outstanding_amount}</td>
+                    <td>
+                      <Button
+                        variant="info"
+                        onClick={() => handleViewPurchase(purchase)}
+                      >
+                        View
+                      </Button>{' '}
+                      <Button
+                        variant="primary"
+                        onClick={() => handleEditPurchase(purchase)}
+                      >
+                        Edit
+                      </Button>{' '}
+                      <Button
+                        variant="danger"
+                        onClick={() => handleDeletePurchase(purchase.id!)}
+                      >
+                        Delete
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </Table>
+          {renderPagination()}
+        </Col>
+      </Row>
+
+      <Modal show={showModal} onHide={handleModalClose}>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {isViewing ? 'View Purchase' : currentPurchase?.id ? 'Edit Purchase' : 'Add Purchase'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group controlId="supplier">
+              <Form.Label>Supplier</Form.Label>
+              <Form.Control
+                as="select"
+                value={currentPurchase?.supplier_id || 0}
+                onChange={(e) =>
+                  setCurrentPurchase(prevPurchase =>
+                    prevPurchase
+                      ? { ...prevPurchase, supplier_id: parseInt(e.target.value) }
+                      : null
+                  )
+                }
+                disabled={isViewing}
+              >
+                <option value={0}>Select Supplier</option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </option>
+                ))}
+              </Form.Control>
+            </Form.Group>
+
+            <Form.Group controlId="date">
+              <Form.Label>Date</Form.Label>
+              <Form.Control
+                type="date"
+                value={currentPurchase?.date || ''}
+                onChange={(e) =>
+                  setCurrentPurchase(prevPurchase =>
+                    prevPurchase
+                      ? { ...prevPurchase, date: e.target.value }
+                      : null
+                  )
+                }
+                disabled={isViewing}
+              />
+            </Form.Group>
+
+            <Form.Group controlId="paymentType">
+              <Form.Label>Payment Type</Form.Label>
+              <Form.Control
+                as="select"
+                value={currentPurchase?.payment_type || ''}
+                onChange={(e) =>
+                  setCurrentPurchase(prevPurchase =>
+                    prevPurchase
+                      ? { ...prevPurchase, payment_type: e.target.value }
+                      : null
+                  )
+                }
+                disabled={isViewing}
+              >
+                <option value="">Select Payment Type</option>
+                {paymentTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </Form.Control>
+            </Form.Group>
+
+            <Form.Group controlId="items">
+              <Form.Label>Items</Form.Label>
+              {currentPurchase?.items.map((item, index) => (
+                <div key={index}>
+                  <Form.Control
+                    as="select"
+                    name="product_id"
+                    value={item.product_id}
+                    onChange={(e) => handleItemChange(e, index)}
+                    disabled={isViewing}
+                  >
+                    <option value={0}>Select Product</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                      </option>
+                    ))}
+                  </Form.Control>
+                  <Form.Control
+                    type="number"
+                    name="quantity"
+                    value={item.quantity}
+                    onChange={(e) => handleItemChange(e, index)}
+                    disabled={isViewing}
+                  />
+                  <Form.Control
+                    type="number"
+                    name="price"
+                    value={item.price}
+                    onChange={(e) => handleItemChange(e, index)}
+                    disabled={isViewing}
+                  />
+                </div>
+              ))}
+              {!isViewing && (
+                <Button onClick={handleAddItem} variant="secondary">
+                  Add Item
+                </Button>
+              )}
+            </Form.Group>
+
+            <Form.Group controlId="expenses">
+              <Form.Label>Expenses</Form.Label>
+              {currentPurchase?.expenses.map((expense, index) => (
+                <div key={index}>
+                  <Form.Control
+                    type="number"
+                    name="id"
+                    value={expense.id}
+                    onChange={(e) => handleExpenseChange(e, index)}
+                    disabled={isViewing}
+                  />
+                  <Form.Control
+                    type="number"
+                    name="amount"
+                    value={expense.amount}
+                    onChange={(e) => handleExpenseChange(e, index)}
+                    disabled={isViewing}
+                  />
+                </div>
+              ))}
+              {!isViewing && (
+                <Button onClick={handleAddExpense} variant="secondary">
+                  Add Expense
+                </Button>
+              )}
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleModalClose}>
+            Close
+          </Button>
+          {!isViewing && (
+            <Button variant="primary" onClick={handleSavePurchase}>
+              Save Purchase
+            </Button>
+          )}
+        </Modal.Footer>
+      </Modal>
+    </Container>
+  );
+};
+
+export default ManagePurchases;

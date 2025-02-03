@@ -6,9 +6,54 @@
       http-equiv="Content-Security-Policy"
       content="script-src 'self' 'unsafe-inline'"
     />
-    <title>Hello Electron React!</title>
+    <title>Advatech Office Supplies ltd... Virtual-Esd</title>
+    <link rel="stylesheet" href="titlebar.css"> <!-- Link to custom CSS -->
+    <link rel ="style" href="../../assets/font/Nunito-Light.ttf">
+    <link rel ="style" href="../../assets/font/Nunito-BlackItalic.ttf">
+
+    <style>
+
+
+
+    </style>
   </head>
   <body>
+    <div id="titlebar">
+      <div class="titlebar">
+        <!-- <div class="title">Virtual-Esd</div> -->
+        <!-- <div class="window-controls">
+          <button id="minimize-btn">_</button>
+          <button id="maximize-btn">[]</button>
+          <button id="close-btn">X</button>
+        </div> -->
+      </div>
+    </div>
     <div id="root"></div>
+    <script>
+import { remote } from '@electron/remote'; // Use '@electron/remote' for newer versions
+
+const minimizeButton = document.getElementById('minimize-btn');
+const maximizeButton = document.getElementById('maximize-btn');
+const closeButton = document.getElementById('close-btn');
+
+minimizeButton.addEventListener('click', () => {
+  remote.getCurrentWindow().minimize();
+});
+
+maximizeButton.addEventListener('click', () => {
+  const window = remote.getCurrentWindow();
+  if (window.isMaximized()) {
+    window.unmaximize();
+  } else {
+    window.maximize();
+  }
+});
+
+closeButton.addEventListener('click', () => {
+  remote.getCurrentWindow().close();
+});
+
+
+    </script>
   </body>
 </html>

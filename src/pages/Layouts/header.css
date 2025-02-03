@@ -1,0 +1,45 @@
+/* header.css */
+@font-face {
+  font-family: 'CustomFont'; /* Name your font family */
+  src: url('../../../assets/font/Nunito-Light.ttf'); /* Locate the .ttf file within your directory*/
+}
+.transparent-modal .modal-content {
+  background-color: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 10px;
+}
+
+.transparent-backdrop {
+  background-color:#57585a;
+}
+
+.profile-modal-header {
+  border-bottom: 1px solid #dee2e6;
+}
+
+.profile-modal-body {
+  padding: 20px;
+}
+
+.profile-picture {
+  width: 100px;
+  height: 100px;
+}
+
+.additional-info p {
+  border-top: 1px solid #dee2e6;
+  padding-top: 10px;
+  margin-top: 10px;
+}
+.demo-nav{
+  font-family: 'CustomFont';
+  margin-left:20px;
+}
+.navbar_fixed{
+  position:fixed;
+  top:0;
+  width:100%;
+  top:100;
+  z-index:10;
+}
+

@@ -1,0 +1,32 @@
+<service>
+	<id>receiptsenderservice.exe</id>
+	<name>ReceiptSenderService</name>
+	<description>A service to send receipts in the background.</description>
+	<executable>C:\Program Files\nodejs\node.exe</executable>
+	<argument>--harmony</argument>
+	<argument>--max_old_space_size=4096</argument>
+	<argument>D:\vfd\christon\christon\virtual_esd\node_modules\node-windows\lib\wrapper.js</argument>
+	<argument>--file</argument>
+	<argument>D:\vfd\christon\christon\virtual_esd\src\main\receipt-sender.ts</argument>
+	<argument>--scriptoptions=</argument>
+	<argument>--log</argument>
+	<argument>ReceiptSenderService wrapper</argument>
+	<argument>--grow</argument>
+	<argument>0.25</argument>
+	<argument>--wait</argument>
+	<argument>1</argument>
+	<argument>--maxrestarts</argument>
+	<argument>3</argument>
+	<argument>--abortonerror</argument>
+	<argument>n</argument>
+	<argument>--stopparentfirst</argument>
+	<argument>undefined</argument>
+	<logmode>rotate</logmode>
+	<stoptimeout>30sec</stoptimeout>
+	<serviceaccount>
+		<domain>DESKTOP-Q7OK72P</domain>
+		<user>LocalSystem</user>
+		<password></password>
+	</serviceaccount>
+	<workingdirectory>D:\vfd\christon\christon\virtual_esd\src\main</workingdirectory>
+</service>

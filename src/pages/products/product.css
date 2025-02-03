@@ -1,0 +1,79 @@
+@font-face {
+  font-family: 'homeFont'; /* Name your font family */
+  src: url('../../../assets/font/Nunito-Light.ttf'); /* Locate the .ttf file within your directory*/
+}
+.table_fonts{
+  font-family:'homeFont';
+}
+.page-link{
+  background:'red';
+}
+
+/* Action Buttons Styling */
+.action-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: all 0.15s ease-in-out;
+  background-color: white;
+  margin: 0 2px;
+}
+
+.action-btn i {
+  font-size: 12px;
+}
+
+/* Edit button */
+.action-btn.btn-outline-warning {
+  color: #e6a500;
+  border: 1px solid #e6a500;
+}
+
+.action-btn.btn-outline-warning:hover {
+  color: white;
+  background-color: #e6a500;
+  border-color: #e6a500;
+  box-shadow: 0 2px 4px rgba(230, 165, 0, 0.2);
+}
+
+/* View button */
+.action-btn.btn-outline-secondary {
+  color: #5a6268;
+  border: 1px solid #5a6268;
+}
+
+.action-btn.btn-outline-secondary:hover {
+  color: white;
+  background-color: #5a6268;
+  border-color: #5a6268;
+  box-shadow: 0 2px 4px rgba(90, 98, 104, 0.2);
+}
+
+/* Delete button */
+.action-btn.btn-outline-danger {
+  color: #dc3545;
+  border: 1px solid #dc3545;
+}
+
+.action-btn.btn-outline-danger:hover {
+  color: white;
+  background-color: #dc3545;
+  border-color: #dc3545;
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+}
+
+/* Active state */
+.action-btn:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* Focus state */
+.action-btn:focus {
+  box-shadow: none;
+  outline: none;
+}

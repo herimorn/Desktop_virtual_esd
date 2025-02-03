@@ -1,0 +1,34 @@
+/*
+ /* titlebar.css */
+ #titlebar {
+  -webkit-app-region: drag; /* Allows dragging the window */
+}
+
+.titlebar {
+  background-color:#FF0000; /* Red color for title bar */
+  color: white; /* Text color */
+  height: 30px; /* Adjust height if needed */
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 14px;
+  font-family: '';
+  /* Adjust font size if needed */
+}
+
+.titlebar .title {
+  flex-grow: 1;
+}
+
+.titlebar .window-controls {
+  display: flex;
+}
+
+.titlebar .window-controls button {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 16px;
+  margin-left: 10px;
+  cursor: pointer;
+} */

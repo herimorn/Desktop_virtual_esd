@@ -1,0 +1,4 @@
+.nav-link.active-link {
+  background-color: #dc3545; /* Red background */
+  color: white; /* White text */
+}
