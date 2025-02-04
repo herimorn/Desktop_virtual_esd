@@ -692,61 +692,64 @@ const handleSaveForAllInvoices = async () => {
   //   }
   // };
 
- const downloadInvoiceAsPDF = async () => {
-  try {
-    const invoiceElement = document.getElementById('invoice');
-    if (!invoiceElement) {
-      toast.error('Could not generate PDF: Invoice element not found');
-      return;
+  const downloadInvoiceAsPDF = async () => {
+    try {
+      const invoiceElement = document.getElementById('invoice');
+      if (!invoiceElement) {
+        toast.error('Could not generate PDF: Invoice element not found');
+        return;
+      }
+
+      console.log('✅ Invoice element found. Checking styles...');
+
+      // Ensure background is solid (Fixes transparency issue)
+      invoiceElement.style.backgroundColor = '#FFFFFF';
+
+      // Create high-quality canvas
+      const fullCanvas = await html2canvas(invoiceElement, {
+        scale: 2, // Increase scale for better quality
+        useCORS: true, // Handle cross-origin images
+        allowTaint: true, // Allow tainted images
+        logging: true, // Enable logging for debugging
+        backgroundColor: '#FFFFFF', // Ensure white background
+        ignoreElements: (element) => {
+          // Ignore elements that might interfere with rendering
+          return element.classList.contains('no-print');
+        },
+      });
+      console.log('🎨 Canvas successfully generated. Converting to image...');
+
+      // Convert canvas to Base64 Image
+      const imgData = fullCanvas.toDataURL('image/jpeg', 1.0); // Fix: Use toDataURL()
+
+      // Create PDF instance
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+      // Get margins & page dimensions
+      const margin = 10;
+      const usableWidth = 210 - (2 * margin);
+      const imgHeight = (fullCanvas.height * usableWidth) / fullCanvas.width;
+
+      // Add image to PDF
+      pdf.addImage(imgData, 'JPEG', margin, margin, usableWidth, imgHeight);
+
+      // Save PDF
+      const fileName = `invoice-${Date.now()}.pdf`;
+      pdf.save(fileName);
+
+      console.log('📄 PDF successfully saved:', fileName);
+      toast.success('PDF downloaded successfully');
+
+    } catch (error) {
+      console.error('❌ Error in downloadInvoiceAsPDF:', error);
+      toast.error(`Failed to generate PDF: ${error.message}`);
     }
-
-    console.log('✅ Invoice element found. Checking styles...');
-
-    // Ensure background is solid (Fixes transparency issue)
-    invoiceElement.style.backgroundColor = '#FFFFFF';
-
-    // Create high-quality canvas
-    const fullCanvas = await html2canvas(invoiceElement, {
-      scale: 1, // Lower scale to prevent memory issues
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: null, // Ensures proper rendering
-      logging: true,
-    });
-
-    console.log('🎨 Canvas successfully generated. Converting to image...');
-
-    // Convert canvas to Base64 Image
-    const imgData = fullCanvas.toDataURL('image/jpeg', 1.0); // Fix: Use toDataURL()
-
-    // Create PDF instance
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-      compress: true,
-    });
-
-    // Get margins & page dimensions
-    const margin = 10;
-    const usableWidth = 210 - (2 * margin);
-    const imgHeight = (fullCanvas.height * usableWidth) / fullCanvas.width;
-
-    // Add image to PDF
-    pdf.addImage(imgData, 'JPEG', margin, margin, usableWidth, imgHeight);
-
-    // Save PDF
-    const fileName = `invoice-${Date.now()}.pdf`;
-    pdf.save(fileName);
-
-    console.log('📄 PDF successfully saved:', fileName);
-    toast.success('PDF downloaded successfully');
-
-  } catch (error) {
-    console.error('❌ Error in downloadInvoiceAsPDF:', error);
-    toast.error(`Failed to generate PDF: ${error.message}`);
-  }
-};
+  };
   // Example of how to wrap a draggable section
   const DraggableWrapper = ({ children, sectionId }: { children: React.ReactNode, sectionId: string }) => {
     return (
@@ -762,6 +765,82 @@ const handleSaveForAllInvoices = async () => {
     );
   };
 
+  const calculateSubtotal = () => {
+    if (!praforma) return 0;
+    return praforma.products.reduce((sum, product) => sum + (product.selling_price * product.sold_quantity), 0);
+  };
+
+  const calculateTotalTax = (subtotal: number) => {
+    if (!praforma || !praforma.tax_codeValue) return 0;
+    const taxPercentage = parseFloat(praforma.tax_codeValue) / 100;
+    return subtotal * taxPercentage;
+  };
+
+
+  const downloadInvoiceAndSendEmail = async (customerEmail) => {
+    try {
+      const invoiceElement = document.getElementById('invoice');
+      if (!invoiceElement) {
+        alert('Could not generate PDF: Invoice element not found');
+        return;
+      }
+
+
+
+      invoiceElement.style.backgroundColor = '#FFFFFF';
+
+      // Create high-quality canvas
+      const fullCanvas = await html2canvas(invoiceElement, {
+        scale: 2, // Increase scale for better quality
+        useCORS: true, // Handle cross-origin images
+        allowTaint: true, // Allow tainted images
+        logging: true, // Enable logging for debugging
+        backgroundColor: '#FFFFFF', // Ensure white background
+        ignoreElements: (element) => {
+          // Ignore elements that might interfere with rendering
+          return element.classList.contains('no-print');
+        },
+      });
+      console.log('🎨 Canvas successfully generated. Converting to image...');
+      const imgData = fullCanvas.toDataURL('image/jpeg', 1.0);
+      // Convert canvas to Base64 Image
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+
+      const margin = 10;
+      const usableWidth = 210 - (2 * margin);
+      const imgHeight = (fullCanvas.height * usableWidth) / fullCanvas.width;
+
+      // Add image to PDF
+      pdf.addImage(imgData, 'JPEG', margin, margin, usableWidth, imgHeight);
+
+      // Save PDF
+      const fileName = `invoice-${Date.now()}.pdf`;
+      pdf.save(fileName);
+      // pdf.addImage(fullCanvas, 'JPEG', margin, margin, usableWidth, (fullCanvas.height * usableWidth) / fullCanvas.width);
+
+      // // Convert PDF to Blob (Buffer)
+      const pdfBlob = pdf.output('arraybuffer');
+
+      // Send request to save and email the PDF
+      const response = await window.electron.saveAndSendInvoice(customerEmail, pdfBlob);
+
+      if (response.success) {
+        alert('Email sent successfully!');
+      } else {
+        alert(`Failed to send email: ${response.error}`);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert(`Error: ${error.message}`);
+    }
+  };
   return (
     <>
       <style>
@@ -955,85 +1034,92 @@ id="hrStyle"
 
 <Draggable position={positions.table || { x: 0, y: 0 }}
         onStop={(e, data) => handleDragStop(e, data, 'table')}  disabled={true} >
-<Table bordered id="table" onClick={() => handleSectionClick('table')}
- style={{ ...styles.table, ...applyCustomStyles('table') }}>
-  <thead id="tableHeader" onClick={() => handleSectionClick('tableHeader')}
- style={{ ...styles.tableHeader, ...applyCustomStyles('tableHeader') }}>
+<Table bordered id="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', color: '#000000' }}>
+  <thead style={{ display: 'table-header-group' }}>
     <tr>
-      <th>#</th>
-      <th>Item Name</th>
-      <th>Item Description</th>
-      <th>Quantity</th>
-      <th>Unit Price</th>
-      <th>Amount</th>
+      <th style={{ backgroundColor: '#57585a', color: '#ffffff', textAlign: 'center', padding: '8px', border: '1px solid #000000' }}>#</th>
+      <th style={{ backgroundColor: '#57585a', color: '#ffffff', textAlign: 'center', padding: '8px', border: '1px solid #000000' }}>Item Name</th>
+      <th style={{ backgroundColor: '#57585a', color: '#ffffff', textAlign: 'center', padding: '8px', border: '1px solid #000000' }}>Item Description</th>
+      <th style={{ backgroundColor: '#57585a', color: '#ffffff', textAlign: 'center', padding: '8px', border: '1px solid #000000' }}>Quantity</th>
+      <th style={{ backgroundColor: '#57585a', color: '#ffffff', textAlign: 'center', padding: '8px', border: '1px solid #000000' }}>Unit Price</th>
+      <th style={{ backgroundColor: '#57585a', color: '#ffffff', textAlign: 'center', padding: '8px', border: '1px solid #000000' }}>Amount</th>
     </tr>
   </thead>
   <tbody>
-    {praforma.products && praforma.products.length > 0 ? (
-      praforma.products.map((product, index) => (
-        <tr key={product.product_id}>
-          <td>{index + 1}</td>
-          <td>{product.product_name}</td>
-          <td>{product.description}</td>
-          <td>{product.sold_quantity}</td>
-          <td>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', minimumFractionDigits: 0,
-maximumFractionDigits: 0 }).format(product.selling_price)}</td>
-          <td>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', minimumFractionDigits: 0,
-maximumFractionDigits: 0}).format(product.selling_price * product.sold_quantity)}</td>
-        </tr>
-      ))
-    ) : (
-      <tr>
-        <td colSpan={6} style={{ textAlign: 'center' }}>No products available</td>
+    {praforma.products.map((product, index) => (
+      <tr key={product.product_id}>
+        <td style={{ padding: '8px', border: '1px solid #000000' }}>{index + 1}</td>
+        <td style={{ padding: '8px', border: '1px solid #000000' }}>{product.product_name}</td>
+        <td style={{ padding: '8px', border: '1px solid #000000' }}>{product.description}</td>
+        <td style={{ padding: '8px', border: '1px solid #000000' }}>{product.sold_quantity}</td>
+        <td style={{ padding: '8px', border: '1px solid #000000', textAlign: 'right' }}>
+          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', minimumFractionDigits: 0 }).format(product.selling_price)}
+        </td>
+        <td style={{ padding: '8px', border: '1px solid #000000', textAlign: 'right' }}>
+          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', minimumFractionDigits: 0 }).format(product.selling_price * product.sold_quantity)}
+        </td>
       </tr>
-    )}
+    ))}
   </tbody>
 </Table>
 </Draggable>
 
-{/* Total Calculation Table */}
-<Table bordered style={{ marginTop: '20px' }}>
+
+<Draggable position={positions.descriptionSection || { x: 0, y: 0 }}
+        onStop={(e, data) => handleDragStop(e, data, 'descriptionSection')}  disabled={true} >
+<div id="descriptionSection" onClick={() => handleSectionClick('descriptionSection')}
+ style={{ ...styles.descriptionSection, ...applyCustomStyles('descriptionSection') }}>
+
+<Table bordered id="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', color: '#000000' }}>
+  <thead style={{ display: 'table-header-group' }}>
+    {/* <tr>
+      <th style={{ backgroundColor: '#b45f06', color: '#ffffff', textAlign: 'center', padding: '8px', border: '1px solid #000000' }}>#</th>
+      <th style={{ backgroundColor: '#b45f06', color: '#ffffff', textAlign: 'center', padding: '8px', border: '1px solid #000000' }}>Item Name</th>
+      <th style={{ backgroundColor: '#b45f06', color: '#ffffff', textAlign: 'center', padding: '8px', border: '1px solid #000000' }}>Item Description</th>
+      <th style={{ backgroundColor: '#b45f06', color: '#ffffff', textAlign: 'center', padding: '8px', border: '1px solid #000000' }}>Quantity</th>
+      <th style={{ backgroundColor: '#b45f06', color: '#ffffff', textAlign: 'center', padding: '8px', border: '1px solid #000000' }}>Unit Price</th>
+      <th style={{ backgroundColor: '#b45f06', color: '#ffffff', textAlign: 'center', padding: '8px', border: '1px solid #000000' }}>Amount</th>
+    </tr> */}
+  </thead>
   <tbody>
+    {praforma.products.map((product, index) => (
+      <tr key={product.product_id}>
+        {/* <td style={{ padding: '8px', border: '1px solid #000000', textAlign: 'center' }}>{index + 1}</td>
+        <td style={{ padding: '8px', border: '1px solid #000000' }}>{product.product_name}</td>
+        <td style={{ padding: '8px', border: '1px solid #000000' }}>{product.description}</td>
+        <td style={{ padding: '8px', border: '1px solid #000000', textAlign: 'center' }}>{product.sold_quantity}</td>
+        <td style={{ padding: '8px', border: '1px solid #000000', textAlign: 'right' }}>
+          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', minimumFractionDigits: 0 }).format(product.selling_price)}
+        </td> */}
+        {/* <td style={{ padding: '8px', border: '1px solid #000000', textAlign: 'right' }}>
+          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', minimumFractionDigits: 0 }).format(product.selling_price * product.sold_quantity)}
+        </td> */}
+      </tr>
+    ))}
+    {/* Summary Section */}
+
+<br/>
     <tr>
-      <td style={styles.textRight}><strong>Subtotal</strong></td>
-      <td style={styles.textRight}><strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', minimumFractionDigits: 0 }).format(total)}</strong></td>
+      <td colSpan="5" style={{ backgroundColor: '#fff', color: '#000', textAlign: 'right', padding: '8px', border: '1px solid #000000' }}><strong>Subtotal</strong></td>
+      <td style={{ padding: '8px', border: '1px solid #000000', textAlign: 'right' }}>
+        <strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS',minimumFractionDigits: 0 }).format(calculateSubtotal())}</strong>
+      </td>
     </tr>
     <tr>
-      <td style={styles.textRight}><strong>Tax Amount</strong></td>
-      <td style={styles.textRight}><strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', minimumFractionDigits: 0 }).format(taxAmount)}</strong></td>
+      <td colSpan="5" style={{ backgroundColor: '#fff', color: '#000', textAlign: 'right', padding: '8px', border: '1px solid #000000' }}><strong>Tax Amount</strong></td>
+      <td style={{ padding: '8px', border: '1px solid #000000', textAlign: 'right' }}>
+        <strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS',minimumFractionDigits: 0 }).format(calculateTotalTax(calculateSubtotal()))}</strong>
+      </td>
     </tr>
     <tr>
-      <td style={styles.textRight}><strong>Grand Total</strong></td>
-      <td style={styles.textRight}><strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', minimumFractionDigits: 0 }).format(grandTotal)}</strong></td>
+      <td colSpan="5" style={{ backgroundColor: '#fff', color: '#000', textAlign: 'right', padding: '8px', border: '1px solid #000000' }}><strong>Grand Total</strong></td>
+      <td style={{ padding: '8px', border: '1px solid #000000', textAlign: 'right' }}>
+        <strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS',minimumFractionDigits: 0 }).format(grandTotal)}</strong>
+      </td>
     </tr>
   </tbody>
 </Table>
 
-<Draggable position={positions.descriptionSection || { x: 0, y: 0 }}
-        onStop={(e, data) => handleDragStop(e, data, 'descriptionSection')}  disabled={true} >
-<div   id="descriptionSection" onClick={() => handleSectionClick('descriptionSection')}
- style={{ ...styles.descriptionSection, ...applyCustomStyles('descriptionSection') }}>
-
-  <Table bordered  id="totalTable" onClick={() => handleSectionClick('totalTable')}
- style={{ ...styles.totalTable, ...applyCustomStyles('totalTable') }}>
-    <tbody>
-      {/* <tr>
-        <td style={styles.textRight}><strong>Exclusive Amount</strong></td>
-        <td style={styles.textRight}><strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS',    minimumFractionDigits: 0,
-maximumFractionDigits: 0 }).format(exclusiveAmount)}</strong></td>
-      </tr> */}
-       <tr>
-        <td style={styles.textRight}><strong>Tax Amount</strong></td>
-        <td style={styles.textRight}><strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS',    minimumFractionDigits: 0,
-maximumFractionDigits: 0 }).format(taxAmount)}</strong></td>
-      </tr>
-      <tr>
-        <td style={styles.textRight}><strong>Grand Total</strong></td>
-        <td style={styles.textRight}><strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' ,    minimumFractionDigits: 0,
-maximumFractionDigits: 0}).format(grandTotal)}</strong></td>
-      </tr>
-    </tbody>
-  </Table>
 </div>
 </Draggable>
 <div className="approval-section" >
@@ -1041,14 +1127,7 @@ maximumFractionDigits: 0}).format(grandTotal)}</strong></td>
         <p>Approved by: ........................................</p>
         <p>Checked by: ........................................</p>
       </div>
-{/* <div style={styles.bankDetails}>
-  <p><strong>BANK DETAILS</strong></p>
-  <p><strong>Bank Name:</strong> CRDB</p>
-  <p><strong>Acc Number:</strong> 0150823309400</p>
-  <p><strong>Acc Name:</strong> {userData?.companyName}</p>
-  <p><strong>Swift Code:</strong> CORUTZTZ</p>
-  <p><strong>Currency:</strong> TZS</p>
-</div> */}
+
 
 <div  id="invoiceFooter" onClick={() => handleSectionClick('invoiceFooter')}
  style={{ ...styles.invoiceFooter, ...applyCustomStyles('invoiceFooter') }} >
@@ -1150,7 +1229,7 @@ const styles = {
   invoiceTitle: {
     fontSize: '20px',
     fontWeight: 'bold',
-    color: '#b45f06',
+    color: '#57585a',
     textAlign: 'center',
     marginBottom: '20px',
   },
@@ -1173,11 +1252,11 @@ const styles = {
     fontSize: '14px',
     color: '#000000',
     marginBottom: '20px',
-    backgroundColor: '#000',
+    backgroundColor: '#ffffff',
   },
   tableHeader: {
     backgroundColor: '#b45f06',
-    color: '#000',
+    color: '#ffffff',
     textAlign: 'center',
   },
   tableFooter: {
