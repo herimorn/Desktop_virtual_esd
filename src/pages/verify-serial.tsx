@@ -25,9 +25,9 @@ const VerifySerial: React.FC = () => {
       const response = await api.post('/serial-numbers/check', { serial }); // Send serial in the request
       console.log('serial number:', response.data);
 
-      if (response.data.success) { // Assuming the response has a success property
+      if (response.data.exists) { // Assuming the response has a success property
         toast.success('Serial Number Verified');
-        navigate('/login');
+        navigate('/login', { state: { serial } }); // Pass serial as state
       } else {
         navigate('/registration');
       }

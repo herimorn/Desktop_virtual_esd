@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, dialog } from 'electron';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import api from 'pages/api';
 
 import fs = require('fs');
 import path = require('path');
@@ -66,7 +67,7 @@ saveAndSendInvoice: (email, pdfBlob) => ipcRenderer.invoke('save-and-send-invoic
   onSetPasswordResponse: (callback: (response: any) => void) => ipcRenderer.on('set-password-response', (event, response) => callback(response)),
   sendRegistrationData: async (data: any) => {
     try {
-      const response = await axios.post('http://204.12.227.240:8080/register', data, {
+      const response = await api.post('/registrationData', data, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -82,6 +83,31 @@ saveAndSendInvoice: (email, pdfBlob) => ipcRenderer.invoke('save-and-send-invoic
       }
     }
   },
+
+
+
+  // fetch banks
+  fetchBanks: async (params: any) => {
+    try {
+      const response = await api.get('/bank-accounts', {
+        params,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+     console.log('Registration successful:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error sending registration data:', error.message);
+      if (error.response && error.response.data && error.response.data.message) {
+        throw new Error(error.response.data.message);
+      } else {
+        throw new Error(error.message);
+      }
+    }
+  },
+
+
   fetchEmailConfiguration: () => ipcRenderer.invoke('fetch-email-configuration'),
   addOrUpdateEmailConfiguration: (email: string, password: string) =>
     ipcRenderer.invoke('add-or-update-email-configuration', email, password),
@@ -197,6 +223,11 @@ fetchProfomaById: (profoma_id:any) => ipcRenderer.invoke('fetch-profomasDetails'
   sendSaleDataToTRA: (saleData: any) => ipcRenderer.invoke('send-receipt', saleData),
   //write the things here..
    getCustomersCount: () => ipcRenderer.invoke('getCustomersCount'),
+
+   RegisterSerial: (formData) => ipcRenderer.invoke('insert-serial', formData),
+
+   CheckSerial:() => ipcRenderer.invoke('select-serial'),
+   GetSerial: () => ipcRenderer.invoke('get-serial'),
   getProductsCount: () => ipcRenderer.invoke('getProductsCount'),
   getSuppliersCount: () => ipcRenderer.invoke('getSuppliersCount'),
   getTotalSales: () => ipcRenderer.invoke('getTotalSales'),
@@ -248,6 +279,8 @@ fetchStyles: () => ipcRenderer.invoke('fetch-styles'),
 declare global {
   interface Window {
     electron: {
+      register(arg0: { formData: { serial_number: any; }; }): unknown;
+      checkUsersTable(): unknown;
       // ... existing types ...
       convertProformaToInvoice: (profomaId: number) => Promise<any>;
     }

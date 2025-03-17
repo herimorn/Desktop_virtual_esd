@@ -74,11 +74,11 @@ const dropdownItemStyle = {
         <i className="bi bi-box"></i> Product
       </NavLink>
       <NavLink
-        to="/all_expenses"
+        to="/office"
         className="nav-link"
         style={({ isActive }) => (isActive ? activeStyle : undefined)}
       >
-        <i className="bi bi-wallet2"></i> Expenses
+        <i className="bi bi-wallet2"></i> Office Expenses
       </NavLink>
       <NavLink
         to="/purchase"

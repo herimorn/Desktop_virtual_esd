@@ -41,6 +41,7 @@ import { LoginUser } from '../../database/Connectionmgr';
 import "../../database/crudes/checking";
 const { sendReceiptToTRA } = require("../../database/crudes/sendTra");
 import { insertDemoData } from './demo';
+import "./Serial";
 import  fs = require('fs');
 // const appLauncher = require('app-launcher');
 
@@ -732,7 +733,7 @@ const requestToken = async () => {
   }
 };
 
-// ipcMain.handle('check-pfx-exists', () => {
+
 //   try {
 //     // Prepare and execute the query to check if any PFX records exist
 //     const row = db.prepare('SELECT id FROM pfx LIMIT 1').get();
@@ -773,6 +774,57 @@ ipcMain.handle('fetch-user-data', async () => {
   });
 });
 //query for sending receipt to the TRA
+ipcMain.handle('select-serial', async (event) => {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT  serial FROM check_serial', [], (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+});
+//  insert data
+
+ipcMain.handle('insert-serial', async (event, formData) => {
+  const { fullName, serial } = formData; // Correctly destructure the object
+  console.log('The added serial number is:', serial);
+
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO check_serial (serial) VALUES (?)',
+      [serial], // Pass correct values
+      function (err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ id: this.lastID });
+        }
+      }
+    );
+  });
+});
+
+// Create an IPC handler for retrieving the serial number
+ipcMain.handle('get-serial', async () => {
+  return new Promise((resolve, reject) => {
+    // Query to fetch the serial from your table
+    db.get('SELECT serial FROM check_serial LIMIT 1', [], (err, row) => {
+      if (err) {
+        console.error('Error retrieving serial:', err);
+        reject(err);
+      } else {
+        // Resolve with the serial if found; otherwise, null
+        resolve(row ? row.serial : null);
+      }
+    });
+  });
+});
+
+
+
+
 
 
 

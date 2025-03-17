@@ -7,12 +7,16 @@ import '../renderer/registration.css';
 import { Container, Row, Col, Button, Form, Table, Modal, Pagination } from 'react-bootstrap';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
- import './register.css'
+import './register.css';
 import { display } from 'html2canvas/dist/types/css/property-descriptors/display';
+import api from './api';
 const Registration: React.FC = () => {
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [phone, setPhone] = useState<string | null>(null);
+  const [fetchBanks, setFetchBanks] = useState<any[]>([]);
+  const [accountNumbers, setAccountNumbers] = useState<{ [key: string]: string }>({}); // State to hold account numbers for each selected bank
+  console.log('the all fetched banks are',fetchBanks);
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -20,13 +24,19 @@ const Registration: React.FC = () => {
     email: '',
     country: '',
     currency: '',
-    bankName: '',
+    bankName: [],
     chartOfAccounts: '',
     fiscalYearStart: '',
     fiscalYearEnd: '',
     serialNumber: '',
     password: '',
-    address: ''  // New address field
+    address: '',  // New address field
+    street: '',   // New street field
+    region: '',   // New region field
+    district: '', // New district field
+    pobox: '' ,
+    personal_email:'', // New P.O. BOX field
+    iform: '' // New iform field
   });
 
   const [errors, setErrors] = useState({
@@ -42,9 +52,14 @@ const Registration: React.FC = () => {
     serialNumber: '',
     password: '',
     phone: '',
-    address: ''
-     // New address field error
+    address: '',
+    street: '',   // New street field error
+    region: '',   // New region field error
+    district: '', // New district field error
+    pobox: ''     // New P.O. BOX field error
   });
+
+
 
   const countryToCurrencyMap: { [key: string]: string } = {
     Tanzania: 'TZS',
@@ -93,10 +108,11 @@ const Registration: React.FC = () => {
     if (!phone || !isValidPhoneNumber(phone)) newErrors.phone = 'Valid Phone number is required.';
     if (!formData.country) newErrors.country = 'Country is required.';
     if (!formData.currency) newErrors.currency = 'Currency is required.';
-    if (!formData.bankName) newErrors.bankName = 'Bank Name is required.';
+    if (!formData.bankName.length) newErrors.bankName = 'Bank Name is required.';
     if (!formData.chartOfAccounts) newErrors.chartOfAccounts = 'Chart of Accounts is required.';
     if (!formData.password) newErrors.password = 'Password is required.';
     if (!formData.address) newErrors.address = 'Address is required.'; // Address validation
+    if (!formData.personal_email)
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -127,29 +143,30 @@ const Registration: React.FC = () => {
       toast.error('Please fix the errors in the form.');
       return;
     }
-    // window.electron.register({
-    //         formData: {
-    //           ...formData,
-    //           phone,
-    //           profilePicture: formData.profilePicture   // Send the file object to the backend
-    //         }
-    //       });
+    window.electron.register({
+            formData: {
+              ...formData,
+              phone,
+              profilePicture: formData.profilePicture   // Send the file object to the backend
+            }
+          });
 
     try {
       const response = await window.electron.sendRegistrationData({
         ...formData,
         phone,
+        accountNumbers
       });
 
       if (response.message === 'Registration successful') {
         console.log('the response from the backend:', response);
-        window.electron.register({
-          formData: {
-            ...formData,
-            phone,
-            profilePicture: formData.profilePicture    // Send the file object to the backend
-          }
-        });
+        // window.electron.register({
+        //   formData: {
+        //     ...formData,
+        //     phone,
+        //     profilePicture: formData.profilePicture    // Send the file object to the backend
+        //   }
+        // });
         toast.success('Registration successful!');
         navigate('/login');
       } else {
@@ -173,8 +190,39 @@ const Registration: React.FC = () => {
     { value: 'Expense', label: 'Expense' },
     { value: 'Liability', label: 'Liability' },
   ];
+
+// fetch banks
+
+const fetchBank = async () => {
+  try {
+    const response = await api.get('/bank-accounts');
+    setFetchBanks(response.data); // Ensure this is set correctly
+    console.log('Fetched banks:', response.data);
+  } catch (error: any) {
+    console.error('Error fetching bank data:', error.message);
+  }
+};
+useEffect(() => {
+  // Initial fetch
+  fetchBank();
+}, []);
+
+const handleBankChange = (selectedOptions: any) => {
+  const selectedBankNames = selectedOptions.map(option => option.value);
+  setFormData((prev) => ({ ...prev, bankName: selectedBankNames })); // Store selected bank names
+
+  // Initialize account numbers for newly selected banks
+  const newAccountNumbers = { ...accountNumbers };
+  selectedBankNames.forEach(bank => {
+    if (!newAccountNumbers[bank]) {
+      newAccountNumbers[bank] = ''; // Initialize account number for new bank
+    }
+  });
+  setAccountNumbers(newAccountNumbers); // Update account numbers state
+};
+
   return (
-    <div className="form-registration-container customFont">
+    <div className="form-registration-container" style={{ fontFamily: 'CustomFont' }}>
       <ToastContainer />
       <h2 className='text-center'>Set up your organization</h2>
       <form className="form" onSubmit={handleSubmit}>
@@ -229,13 +277,25 @@ const Registration: React.FC = () => {
             {errors.email && <div className="invalid-feedback">{errors.email}</div>}
           </div>
           <div className="form-group">
-            <label>Address</label> {/* New address field */}
-            <input type="text" placeholder="123 Main St" id='address' onChange={handleChange} required />
-            {errors.address && <div className="invalid-feedback">{errors.address}</div>}
+            <label>Region</label> {/* New address field */}
+            <input type="text" placeholder="eg Dar es salaam" id='region' onChange={handleChange} required />
+            {errors.region && <div className="invalid-feedback">{errors.region}</div>}
           </div>
-        </div>
-
-        <div className="form-section">
+          <div className="form-group">
+            <label>District</label> {/* New address field */}
+            <input type="text" placeholder="District" id='district' onChange={handleChange} required />
+            {errors.district && <div className="invalid-feedback">{errors.district}</div>}
+          </div>
+          <div className="form-group">
+            <label>Street</label> {/* New address field */}
+            <input type="text" placeholder="123 Main St" id='street' onChange={handleChange} required />
+            {errors.street && <div className="invalid-feedback">{errors.street}</div>}
+          </div>
+          <div className="form-group">
+            <label>P.O. BOX</label> {/* New address field */}
+            <input type="text" placeholder="P.O. BOX" id='pobox' onChange={handleChange} required />
+            {errors.pobox && <div className="invalid-feedback">{errors.pobox}</div>}
+          </div>
           <div className="form-group">
             <label>Country</label>
             <Select
@@ -246,6 +306,10 @@ const Registration: React.FC = () => {
             />
             {errors.country && <div className="invalid-feedback">{errors.country}</div>}
           </div>
+        </div>
+
+        <div className="form-section">
+
           <div className="form-group">
             <label>Currency</label>
             <input type="text" placeholder="TZS" id='currency' value={formData.currency} readOnly />
@@ -253,9 +317,28 @@ const Registration: React.FC = () => {
           </div>
           <div className="form-group">
             <label>Bank Name</label>
-            <input type="text" placeholder="Bank Name" id='bankName' onChange={handleChange} required />
+            <Select
+              isMulti
+              options={fetchBanks.map(bank => ({ value: bank.name, label: bank.name }))} // Map fetched banks to options
+              onChange={handleBankChange}
+              className={`basic-multi-select ${errors.bankName ? 'is-invalid' : ''}`}
+            />
             {errors.bankName && <div className="invalid-feedback">{errors.bankName}</div>}
           </div>
+
+          {formData.bankName.map((bank) => (
+            <div className="form-group" key={bank}>
+              <label>Account Number for {bank}</label>
+              <input
+                type="text"
+                placeholder={`Account Number for ${bank}`}
+                value={accountNumbers[bank] || ''} // Ensure the input value is linked to the correct bank
+                onChange={(e) => setAccountNumbers({ ...accountNumbers, [bank]: e.target.value })} // Update account number for the specific bank
+                required
+              />
+            </div>
+          ))}
+
           <div className="form-section">
   <div className="form-group">
     <label htmlFor="accountType">Charts Account</label>
@@ -287,6 +370,11 @@ const Registration: React.FC = () => {
             <label>Password</label>
             <input type="password" placeholder="Password" id='password' onChange={handleChange} required />
             {errors.password && <div className="invalid-feedback">{errors.password}</div>}
+          </div>
+          <div className="form-group">
+            <label>Personal Email</label>
+            <input type="email" placeholder="john@doe.com" id='personal_email' onChange={handleChange} required
+            />
           </div>
         </div>
 

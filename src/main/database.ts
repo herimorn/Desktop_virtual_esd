@@ -199,7 +199,7 @@ export function createTables(): void {
       `);
 
       db.run(`
-        
+
         CREATE TABLE IF NOT EXISTS profomaItems (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           profoma_id INTEGER NOT NULL,
@@ -284,6 +284,25 @@ export function createTables(): void {
           category TEXT NOT NULL
         )
       `);
+      db.run(`
+        CREATE TABLE IF NOT EXISTS office_expense(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          category TEXT NOT NULL,
+          ammount FLOAT NOT NULL
+        )
+      `);
+
+      db.run(`
+        CREATE TABLE IF NOT EXISTS check_serial(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          serial  TEXT NOT NULL,
+          fullName TEXT  Null
+
+        )
+      `);
+
 
       db.run(`
         CREATE TABLE IF NOT EXISTS ExpensePurchase (
@@ -405,7 +424,7 @@ export function createTables(): void {
       header_images TEXT DEFAULT 'default_header.png',
       footer_images TEXT DEFAULT 'default_footer.png'
     )`);
-    
+
     db.run(`INSERT OR IGNORE INTO praformaCustomization (id, fontSize) VALUES (1, '14px')`);
 
     });
@@ -415,11 +434,8 @@ export function createTables(): void {
       email TEXT UNIQUE,
       password TEXT
     )`);
-    
+
   }
-
-
-
 
 // IPC communication to show paths info
 export function setupIpcHandlers(): void {
