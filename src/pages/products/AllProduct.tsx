@@ -14,6 +14,7 @@ import data from '../../../database/data.json';
 import { saveAs } from 'file-saver';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import productApi from '../api/productApi'; // Import the provided API
 
 // Define interfaces for your data
 interface County {
@@ -204,14 +205,16 @@ const AllProduct: FC<RouteComponentProps> = () => {
     };
   //   fetchUserData();
   // }, []); // Empty dependency array means this runs once on mount
-
+  // Fetch all products
   const fetchProducts = async () => {
     try {
-      const response: Product[] = await window.electron.fetchProducts();
-      setProducts(response);
-      setFilteredProducts(response);
+      setLoading(true);
+      const response = await productApi.get('/');
+      setProducts(response.data);
+      setFilteredProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
+      toast.error('Error fetching products.');
     } finally {
       setLoading(false);
     }
@@ -270,20 +273,41 @@ const AllProduct: FC<RouteComponentProps> = () => {
     try {
       const itemCode = await generateItemCode(productToEdit);
       const newProduct = { ...productToEdit, itemCode };
-
-      // Ensure `newProduct` is a plain object
       if (productToEdit.id === null) {
-        await window.electron.addProduct(newProduct);
+        // Add new product
+        await productApi.post('/', productToEdit);
+        toast.success('Product added successfully!');
       } else {
-        await window.electron.updateProduct(newProduct);
+        // Update existing product
+        await productApi.put(`/${productToEdit.id}`, productToEdit);
+        toast.success('Product updated successfully!');
       }
-
       fetchProducts(); // Refresh the product list
       setShowModal(false); // Close the modal
     } catch (error) {
       console.error('Error saving product:', error);
+      toast.error('Error saving product.');
     }
   };
+
+  // const handleSave = async () => {
+  //   try {
+  //     const itemCode = await generateItemCode(productToEdit);
+  //     const newProduct = { ...productToEdit, itemCode };
+
+  //     // Ensure `newProduct` is a plain object
+  //     if (productToEdit.id === null) {
+  //       await window.electron.addProduct(newProduct);
+  //     } else {
+  //       await window.electron.updateProduct(newProduct);
+  //     }
+
+  //     fetchProducts(); // Refresh the product list
+  //     setShowModal(false); // Close the modal
+  //   } catch (error) {
+  //     console.error('Error saving product:', error);
+  //   }
+  // };
 
 const generateItemCode = async (product: Product): Promise<string> => {
   const maxProductId = await fetchMaxProductId();
@@ -328,7 +352,6 @@ const generateItemCode = async (product: Product): Promise<string> => {
   };
 
   const handleDelete = async (id: number) => {
-
     const result = await Swal.fire({
       title: 'Are you sure?',
       text: 'This action cannot be undone.',
@@ -341,17 +364,15 @@ const generateItemCode = async (product: Product): Promise<string> => {
 
     if (result.isConfirmed) {
       try {
-        await window.electron.deleteProduct(id);
+        await productApi.delete(`/${id}`);
         toast.success('Product deleted successfully!');
-        fetchProducts();
+        fetchProducts(); // Refresh the product list
       } catch (error) {
-        console.error('Error deleting Product', error);
-        toast.error('Error deleting Product.');
+        console.error('Error deleting product:', error);
+        toast.error('Error deleting product.');
       }
     }
-
   };
-
   //fetch user data..
 
   const handlePageChange = (page: number) => {

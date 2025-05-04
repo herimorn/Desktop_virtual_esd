@@ -5,18 +5,17 @@ import Select from 'react-select';
 import 'react-toastify/dist/ReactToastify.css';
 import '../renderer/registration.css';
 import { Container, Row, Col, Button, Form, Table, Modal, Pagination } from 'react-bootstrap';
-import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import type { FormControlProps } from 'react-bootstrap';
+import PhoneInput, { isValidPhoneNumber, E164Number } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import './register.css';
 import { display } from 'html2canvas/dist/types/css/property-descriptors/display';
-import api from './api';
+import api from './api/api';
 const Registration: React.FC = () => {
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [phone, setPhone] = useState<string | null>(null);
-  const [fetchBanks, setFetchBanks] = useState<any[]>([]);
   const [accountNumbers, setAccountNumbers] = useState<{ [key: string]: string }>({}); // State to hold account numbers for each selected bank
-  console.log('the all fetched banks are',fetchBanks);
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -35,8 +34,11 @@ const Registration: React.FC = () => {
     region: '',   // New region field
     district: '', // New district field
     pobox: '' ,
-    personal_email:'', // New P.O. BOX field
-    iform: '' // New iform field
+     personal_username:'',
+    personal_email:'',
+    // New P.O. BOX field
+    iform: '', // New iform field
+    traTin: '', // New TRA TIN field
   });
 
   const [errors, setErrors] = useState({
@@ -56,7 +58,9 @@ const Registration: React.FC = () => {
     street: '',   // New street field error
     region: '',   // New region field error
     district: '', // New district field error
-    pobox: ''     // New P.O. BOX field error
+    pobox: '',
+    personal_username: '', // New P.O. BOX field error
+    tra_error: '', // New TRA TIN field error
   });
 
 
@@ -70,6 +74,8 @@ const Registration: React.FC = () => {
     SouthSudan: 'SSP'
   };
 
+
+
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
@@ -79,9 +85,9 @@ const Registration: React.FC = () => {
         const base64String = reader.result as string; // Base64 string
         setFormData({
           ...formData,
-          profilePicture: base64String
+          // profilePicture is not in formData type, so we don't set it
         });
-        setSelectedFile(base64String); // Update selectedFile after reading the file
+        setSelectedFile(file); // Update selectedFile with the File object
       };
 
       reader.readAsDataURL(file); // Convert file to Base64 string
@@ -111,9 +117,10 @@ const Registration: React.FC = () => {
     if (!formData.bankName.length) newErrors.bankName = 'Bank Name is required.';
     if (!formData.chartOfAccounts) newErrors.chartOfAccounts = 'Chart of Accounts is required.';
     if (!formData.password) newErrors.password = 'Password is required.';
-    if (!formData.address) newErrors.address = 'Address is required.'; // Address validation
+    if (!formData.address) newErrors.address = 'Address is required.';
+    if (!formData.personal_username) newErrors.personal_username = 'Username is required.';// Address validation
     if (!formData.personal_email)
-
+    if (!formData.traTin) newErrors.tra_error = 'TRA TIN is required.'; // TRA TIN validation
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -143,13 +150,6 @@ const Registration: React.FC = () => {
       toast.error('Please fix the errors in the form.');
       return;
     }
-    window.electron.register({
-            formData: {
-              ...formData,
-              phone,
-              profilePicture: formData.profilePicture   // Send the file object to the backend
-            }
-          });
 
     try {
       const response = await window.electron.sendRegistrationData({
@@ -158,19 +158,19 @@ const Registration: React.FC = () => {
         accountNumbers
       });
 
-      if (response.message === 'Registration successful') {
-        console.log('the response from the backend:', response);
-        // window.electron.register({
-        //   formData: {
-        //     ...formData,
-        //     phone,
-        //     profilePicture: formData.profilePicture    // Send the file object to the backend
-        //   }
-        // });
+      console.log('mzigo unaotumwa ni', response)
+      if ((response as any).message === 'success') {
+        //console.log('the response from the backend:', response);
+        window.electron.RegisterSerial({
+          formData: {
+            ...formData,
+            phone
+          }
+        });
         toast.success('Registration successful!');
         navigate('/login');
       } else {
-        toast.error(`Error sending data: ${response.message}`);
+        toast.error(`Error sending data: ${(response as any).message}`);
       }
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message;
@@ -191,35 +191,45 @@ const Registration: React.FC = () => {
     { value: 'Liability', label: 'Liability' },
   ];
 
-// fetch banks
 
-const fetchBank = async () => {
-  try {
-    const response = await api.get('/bank-accounts');
-    setFetchBanks(response.data); // Ensure this is set correctly
-    console.log('Fetched banks:', response.data);
-  } catch (error: any) {
-    console.error('Error fetching bank data:', error.message);
-  }
+// Add the predefined banks object
+const Bbanks: { [key: string]: string } = {
+  Tanzania: 'CRDB',
+  Kenya: 'NMB',
+  Uganda: 'NBC',
+  ABSA: 'ABSA',
+  AZANIA: 'AZANIA'
 };
-useEffect(() => {
-  // Initial fetch
-  fetchBank();
-}, []);
 
+// Remove fetchBank function and replace with bankOptions
+const bankOptions = Object.entries(Bbanks).map(([key, value]) => ({
+  value: value,
+  label: value
+}));
+
+// Update the handleBankChange function
 const handleBankChange = (selectedOptions: any) => {
-  const selectedBankNames = selectedOptions.map(option => option.value);
-  setFormData((prev) => ({ ...prev, bankName: selectedBankNames })); // Store selected bank names
+  if (!selectedOptions) {
+    setFormData(prev => ({ ...prev, bankName: [] }));
+    setAccountNumbers({});
+    return;
+  }
+
+  const selectedBanks = Array.isArray(selectedOptions) ? selectedOptions : [selectedOptions];
+  const selectedBankNames = selectedBanks.map(option => option.value);
+  setFormData(prev => ({ ...prev, bankName: selectedBankNames }));
 
   // Initialize account numbers for newly selected banks
   const newAccountNumbers = { ...accountNumbers };
   selectedBankNames.forEach(bank => {
     if (!newAccountNumbers[bank]) {
-      newAccountNumbers[bank] = ''; // Initialize account number for new bank
+      newAccountNumbers[bank] = '';
     }
   });
-  setAccountNumbers(newAccountNumbers); // Update account numbers state
+  setAccountNumbers(newAccountNumbers);
 };
+
+// Remove the useEffect for fetchBank since we're using static data now
 
   return (
     <div className="form-registration-container" style={{ fontFamily: 'CustomFont' }}>
@@ -231,8 +241,14 @@ const handleBankChange = (selectedOptions: any) => {
             <center>
               <label className='txt'>Company Name</label>
             </center>
-            <input type="text" placeholder="Company Name" id='companyName' onChange={handleChange}
-            isInvalid={!!errors.companyName} required />
+            <Form.Control
+              type="text"
+              placeholder="Company Name"
+              id='companyName'
+              onChange={handleChange}
+              isInvalid={!!errors.companyName}
+              required
+            />
             {errors.companyName && <div className="invalid-feedback">{errors.companyName}</div>}
           </div>
           <div className="form-group">
@@ -240,13 +256,13 @@ const handleBankChange = (selectedOptions: any) => {
       <PhoneInput style={{height:'4',display:'flex'}}
         name="tel"
         id="tel"
-        className={`form-control ${errors.phone ? 'is-invalid' : ''} custom-phone-input`} // Add a custom class for styling
+        className={`form-control ${errors.phone ? 'is-invalid' : ''} custom-phone-input`}
         defaultCountry="TZ"
-     value={phone}
-              onChange={(value) => {
-                setPhone(value);
-                setErrors({ ...errors, phone: '' });
-              }}
+        value={phone}
+        onChange={(value?: E164Number | undefined) => {
+          setPhone(value || null);
+          setErrors({ ...errors, phone: '' });
+        }}
         required
       />
       {errors.phone && <div className="invalid-feedback">{errors.phone}</div>}
@@ -261,7 +277,7 @@ const handleBankChange = (selectedOptions: any) => {
             </div>
             {selectedFile && (
               <div className="image-preview">
-                <img src={selectedFile} alt="Profile Preview" />
+                <img src={URL.createObjectURL(selectedFile)} alt="Profile Preview" />
               </div>
             )}
           </div>
@@ -272,8 +288,14 @@ const handleBankChange = (selectedOptions: any) => {
           </div>
           <div className="form-group">
             <label>Email</label>
-            <input type="email" placeholder="john@doe.com" id='email' onChange={handleChange} required
-               isInvalid={!!errors.email}/>
+            <input
+              type="email"
+              placeholder="john@doe.com"
+              id='email'
+              onChange={handleChange}
+              required
+              className={`form-control ${errors.email ? 'is-invalid' : ''}`}
+            />
             {errors.email && <div className="invalid-feedback">{errors.email}</div>}
           </div>
           <div className="form-group">
@@ -319,9 +341,10 @@ const handleBankChange = (selectedOptions: any) => {
             <label>Bank Name</label>
             <Select
               isMulti
-              options={fetchBanks.map(bank => ({ value: bank.name, label: bank.name }))} // Map fetched banks to options
+              options={bankOptions}
               onChange={handleBankChange}
               className={`basic-multi-select ${errors.bankName ? 'is-invalid' : ''}`}
+              placeholder="Select banks..."
             />
             {errors.bankName && <div className="invalid-feedback">{errors.bankName}</div>}
           </div>
@@ -367,9 +390,19 @@ const handleBankChange = (selectedOptions: any) => {
             {errors.serialNumber && <div className="invalid-feedback">{errors.serialNumber}</div>}
           </div>
           <div className="form-group">
+            <label>TRA TIN</label>
+            <input type="text" placeholder="TRA TIN" id='traTin' onChange={handleChange} required />
+            {errors.tra_error && <div className="invalid-feedback">{errors.tra_error}</div>}
+          </div>
+          <div className="form-group">
             <label>Password</label>
             <input type="password" placeholder="Password" id='password' onChange={handleChange} required />
             {errors.password && <div className="invalid-feedback">{errors.password}</div>}
+          </div>
+          <div className="form-group">
+            <label>Personal Username</label>
+            <input type="text" placeholder="Personal Username" id='personal_username' onChange={handleChange} required />
+            {errors.personal_username && <div className="invalid-feedback">{errors.personal_username}</div>}
           </div>
           <div className="form-group">
             <label>Personal Email</label>

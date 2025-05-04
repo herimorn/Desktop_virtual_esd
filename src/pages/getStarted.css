@@ -1,0 +1,34 @@
+.welcome-header h3 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #333;
+  margin-right: 2rem;
+}
+
+.username {
+  color: #007bff; /* A professional blue tone */
+  font-weight: 700;
+}
+
+.user-role {
+  font-style: italic;
+  color: #555;
+  margin-left: 0.5rem;
+}
+.welcome-header h3 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #333;
+  margin-right: 2rem;
+}
+
+.username {
+  color: #007bff; /* A professional blue tone */
+  font-weight: 700;
+}
+
+.user-role {
+  font-style: italic;
+  color: #555;
+  margin-left: 0.5rem;
+}

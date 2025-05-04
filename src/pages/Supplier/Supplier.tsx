@@ -12,6 +12,7 @@ import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { parsePhoneNumberFromString, isValidPhoneNumber } from 'libphonenumber-js';
 import Swal from 'sweetalert2';
+import supplierApi from '../../pages/api/supplierApi'; // Import the supplier API
 
 // Supplier Interface
 interface Supplier {
@@ -40,15 +41,15 @@ const Supplier: React.FC = () => {
   // Fetch all suppliers from the backend
   const fetchAllSuppliers = async () => {
     try {
-      const response: Supplier[] = await window.electron.fetchSuppliers();
-      console.log('Suppliers fetched:', response); // Debugging line
-      setSuppliers(response);
-      setFilteredSuppliers(response);
+      const response = await supplierApi.get('/');
+      console.log('Suppliers fetched:', response.data); // Debugging line
+      setSuppliers(response.data);
+      setFilteredSuppliers(response.data);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
+      toast.error('Error fetching suppliers.');
     }
   };
-
 
   // Add Supplier Modal
   const handleAdd = () => {
@@ -78,72 +79,68 @@ const Supplier: React.FC = () => {
 
     if (result.isConfirmed) {
       try {
-        await window.electron.deleteSupplier(id);
+        await supplierApi.delete(`/${id}`);
         toast.success('Supplier deleted successfully!');
         fetchAllSuppliers();
       } catch (error) {
-        console.error('Error deleting Supplier:', error);
-        toast.error('Error deleting Supplier.');
+        console.error('Error deleting supplier:', error);
+        toast.error('Error deleting supplier.');
       }
     }
   };
 
   // Save or Update Supplier
-// Save or Update Supplier
-// Save or Update Supplier
-const handleSave = async () => {
-  try {
-    if (currentSupplier) {
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      const phoneNumber = parsePhoneNumberFromString(currentSupplier.phone);
+  const handleSave = async () => {
+    try {
+      if (currentSupplier) {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        const phoneNumber = parsePhoneNumberFromString(currentSupplier.phone);
 
-      if (!currentSupplier.name.trim()) {
-        toast.error('Name is required.');
-        return;
+        if (!currentSupplier.name.trim()) {
+          toast.error('Name is required.');
+          return;
+        }
+
+        if (!currentSupplier.email.trim() || !emailRegex.test(currentSupplier.email)) {
+          toast.error('A valid Gmail address is required.');
+          return;
+        }
+
+        if (!currentSupplier.phone.trim() || !phoneNumber || !isValidPhoneNumber(phoneNumber.number)) {
+          toast.error('A valid international phone number is required.');
+          return;
+        }
+
+        if (!currentSupplier.address.trim()) {
+          toast.error('Address is required.');
+          return;
+        }
+
+        const tinRegex = /^[0-9]{9}$/;
+        if (!tinRegex.test(currentSupplier.tin)) {
+          toast.error('TRA TIN must be exactly 9 digits.');
+          return;
+        }
+
+        if (modalType === 'Add') {
+          await supplierApi.post('/', currentSupplier);
+          toast.success('Supplier added successfully!');
+        } else {
+          await supplierApi.put(`/${currentSupplier.id}`, currentSupplier);
+          toast.success('Supplier updated successfully!');
+        }
+
+        // Re-fetch all suppliers after the save operation
+        fetchAllSuppliers();
+
+        setShowModal(false);
+        setCurrentSupplier(null);
       }
-
-      if (!currentSupplier.email.trim() || !emailRegex.test(currentSupplier.email)) {
-        toast.error('A valid Gmail address is required.');
-        return;
-      }
-
-      if (!currentSupplier.phone.trim() || !phoneNumber || !isValidPhoneNumber(phoneNumber.number)) {
-        toast.error('A valid international phone number is required.');
-        return;
-      }
-
-      if (!currentSupplier.address.trim()) {
-        toast.error('Address is required.');
-        return;
-      }
-
-      const tinRegex = /^[0-9]{9}$/;
-      if (!tinRegex.test(currentSupplier.tin)) {
-        toast.error('TRA TIN must be exactly 9 digits.');
-        return;
-      }
-
-      if (modalType === 'Add') {
-        await window.electron.addSupplier(currentSupplier);
-        toast.success('Supplier added successfully!');
-      } else {
-        await window.electron.updateSupplier(currentSupplier);
-        toast.success('Supplier updated successfully!');
-      }
-
-      // Re-fetch all suppliers after the save operation
-      fetchAllSuppliers();
-
-      setShowModal(false);
-      setCurrentSupplier(null);
+    } catch (error) {
+      console.error(`Error ${modalType === 'Add' ? 'adding' : 'updating'} supplier:`, error);
+      toast.error(`Error ${modalType === 'Add' ? 'adding' : 'updating'} supplier.`);
     }
-  } catch (error) {
-    console.error(`Error ${modalType === 'Add' ? 'adding' : 'updating'} supplier:`, error);
-    toast.error(`Error ${modalType === 'Add' ? 'adding' : 'updating'} supplier.`);
-  }
-};
-
-
+  };
 
   // Search Suppliers
   const handleSearch = (event: ChangeEvent<HTMLInputElement>) => {
@@ -172,17 +169,16 @@ const handleSave = async () => {
   const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
 
   return (
-    <Container fluid className="p-0 "style={{fontFamily:'CustomFont'}}>
+    <Container fluid className="p-0 " style={{ fontFamily: 'CustomFont' }}>
       <Header />
       <Row noGutters>
         <Col md={2} className="bg-light sidebar p-3">
           <Sidebar />
         </Col>
-        <Col md={10} className="p-5 content" style={{marginTop:20}}>
-
-          <h3 className="mb-3 " style={{position:'relative',top:2}}>All Suppliers</h3>
+        <Col md={10} className="p-5 content" style={{ marginTop: 20 }}>
+          <h3 className="mb-3 " style={{ position: 'relative', top: 2 }}>All Suppliers</h3>
           <Row className="mb-3">
-            <Col md={3} style={{position:'relative',top:2}}>
+            <Col md={3} style={{ position: 'relative', top: 2 }}>
               <Form.Control
                 type="text"
                 placeholder="Search..."
@@ -206,61 +202,57 @@ const handleSave = async () => {
               >
                 <i className="bi bi-plus-circle"> Add Supplier </i>
               </Button>
-              {/* <Button size="sm" variant="dark" onClick={handleImport}
-                className='btn-sm rounded-pill'>
-                Import
-              </Button> */}
             </Col>
           </Row>
           <Table striped bordered hover responsive className="Supplier" style={{ marginTop: 10 }}>
-  <thead>
-    <tr>
-      <th>#</th>
-      <th>Name</th>
-      <th>TIN</th>
-      <th>Email</th>
-      <th>Phone</th>
-      <th>Address</th>
-      <th>Action</th>
-    </tr>
-  </thead>
-  <tbody>
-    {getPaginatedSuppliers().map((supplier, index) => (
-      <tr key={supplier.id}>
-        <td>{index + 1}</td> {/* Adding the row number */}
-        <td>{supplier.name}</td>
-        <td>{supplier.tin}</td>
-        <td>{supplier.email}</td>
-        <td>{supplier.phone}</td>
-        <td>{supplier.address}</td>
-        <td style={{
-                        display: 'flex',
-                        gap: '4px',  // Reduced gap
-                        padding: '4px 8px',  // Reduced padding
-                        justifyContent: 'flex-start',
-                        alignItems: 'center'
-                      }}>
-          <Button
-            size="sm"
-            variant="warning"
-            onClick={() => handleEdit(supplier)}
-           className='editButton'
-          >
-            <i className="bi bi-pencil-square"></i>
-          </Button>{' '}
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() => handleDelete(supplier.id)}
-           className='deleteButton'
-          >
-            <i className="bi bi-trash"></i>
-          </Button>
-        </td>
-      </tr>
-    ))}
-  </tbody>
-</Table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>TIN</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {getPaginatedSuppliers().map((supplier, index) => (
+                <tr key={supplier.id}>
+                  <td>{index + 1}</td>
+                  <td>{supplier.name}</td>
+                  <td>{supplier.tin}</td>
+                  <td>{supplier.email}</td>
+                  <td>{supplier.phone}</td>
+                  <td>{supplier.address}</td>
+                  <td style={{
+                    display: 'flex',
+                    gap: '4px',
+                    padding: '4px 8px',
+                    justifyContent: 'flex-start',
+                    alignItems: 'center'
+                  }}>
+                    <Button
+                      size="sm"
+                      variant="warning"
+                      onClick={() => handleEdit(supplier)}
+                      className='editButton'
+                    >
+                      <i className="bi bi-pencil-square"></i>
+                    </Button>{' '}
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => handleDelete(supplier.id)}
+                      className='deleteButton'
+                    >
+                      <i className="bi bi-trash"></i>
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
 
           <BootstrapPagination style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
             <BootstrapPagination.Prev

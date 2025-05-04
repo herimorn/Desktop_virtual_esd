@@ -786,15 +786,22 @@ ipcMain.handle('select-serial', async (event) => {
   });
 });
 //  insert data
+ipcMain.handle('insert-serial', async (event, { formData, serial }) => {
+  console.log('The invoking formData is', formData);
+  // Attempt to extract from serial, formData.serial, or formData.serialNumber
+  const serialFromForm = formData?.serial || formData?.serialNumber;
+  const serialToInsert = serial || serialFromForm;
 
-ipcMain.handle('insert-serial', async (event, formData) => {
-  const { fullName, serial } = formData; // Correctly destructure the object
-  console.log('The added serial number is:', serial);
+  if (!serialToInsert) {
+    throw new Error('Serial number is required');
+  }
+
+  console.log('The added serial number is:', serialToInsert);
 
   return new Promise((resolve, reject) => {
     db.run(
       'INSERT INTO check_serial (serial) VALUES (?)',
-      [serial], // Pass correct values
+      [serialToInsert],
       function (err) {
         if (err) {
           reject(err);
@@ -805,6 +812,7 @@ ipcMain.handle('insert-serial', async (event, formData) => {
     );
   });
 });
+
 
 // Create an IPC handler for retrieving the serial number
 ipcMain.handle('get-serial', async () => {
@@ -827,29 +835,3 @@ ipcMain.handle('get-serial', async () => {
 
 
 
-
-// ipcMain.handle('send-sale-data-to-tra', async (event, receiptData) => {
-//   try {
-//     // Validate and process receipt data
-//     console.log('Received receipt data:', receiptData);
-
-//     // Send receipt to TRA
-//     const response = await sendReceiptToTRA(receiptData);
-
-//     // Log and return the response
-//     console.log('TRA Response:', response);
-//     return response;
-//   } catch (error) {
-//     console.error('Error in sending receipt to TRA:', error);
-
-//     // Handle the error and return a response back to the renderer process
-//     return { success: false, message: error.message || 'An error occurred while sending receipt to TRA' };
-//   }
-// // });
-// function sendToTRA(saleData: any) {
-//   throw new Error('Function not implemented.');
-// }
-
-
-
-// Add this handler to fetch customizations

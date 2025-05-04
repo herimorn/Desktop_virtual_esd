@@ -1,75 +1,81 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+/* eslint-disable jsx-a11y/label-has-associated-control */
+/* eslint-disable react/function-component-definition */
+/* eslint-disable prettier/prettier */
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import api from './api';
+import loginApi from './api/loginApi';
+import { useDispatch } from 'react-redux';
+import { setUser } from '../redux/userSlice';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const serial = location.state?.serial;
+  const dispatch = useDispatch();
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
+  const[role, setRole]= useState('');
+  const [serial, setSerial] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [userInfo,setUserInfo]=useState('');
 
-
-  // Check for serial number and redirect if missing
-  if (!serial) {
-    toast.error('Serial number is missing. Please verify again.', {
-      toastId: 'serial-missing' // Prevent duplicate toasts
-    });
-    navigate('/verify-serial');
-    return null;
-  }
+  // Fetch serial from remote database via Electron API
+  useEffect(() => {
+    const fetchSerial = async () => {
+      try {
+        const result = await window.electron.CheckSerial();
+        console.log('Remote serial result:', result);
+        if (result && result[0]?.serial) {
+          setSerial(result[0].serial);
+        } else {
+          toast.error('No serial found in remote. Please register.');
+          // Optionally redirect to registration if no serial exists
+          navigate('/registration');
+        }
+      } catch (error: any) {
+        console.error('Error fetching remote serial:', error.message);
+        toast.error('Failed to fetch serial from remote.');
+      }
+    };
+    fetchSerial();
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!fullName || !password || !serial) {
+      toast.error('All fields are required and serial must be available.');
+      return;
+    }
+
     setIsLoading(true);
 
-
-
     try {
-      let storedSerial = await window.electron.GetSerial(); // Fetch stored serial from SQLite
-      console.log('the stored serial is',storedSerial);
-
-      // If serial is not stored, use the input serial
-      if (!storedSerial) {
-        if (!serial.trim()) {
-          toast.error('Serial number is required');
-          setIsLoading(false);
-          return;
-        }
-        storedSerial = serial;
-      }
-
-      if (!fullName.trim() || !password.trim()) {
-        toast.error('Please fill in all fields');
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await api.post('/company-login', {
-        serial: storedSerial, // Use stored serial if available
+      // Send login details (including the serial fetched from remote) to your server
+      const response = await loginApi.post('/login', {
         fullName,
         password,
+        serial,
       });
-
       console.log('Response data:', response.data);
 
-      if (response.data.message === 'Login successful') {
-        // Store the serial in SQLite if it's a new registration
-        if (!await window.electron.GetSerial()) {
-          await window.electron.RegisterSerial({ fullName, serial: storedSerial });
-          toast.success('Serial number saved successfully!');
-        }
-
-        // Store auth token
+      if (response.data.message === 'Login successful.') {
+        console.log('this one is triggered');
+        // Optionally store auth token if provided
         if (response.data.token) {
           localStorage.setItem('authToken', response.data.token);
         }
-
-        navigate('/dashboard', { state: { fullName } });
+        // Dispatch user data to Redux for persistence
+        dispatch(setUser({
+          token: response.data.token,
+          fullName,
+          serial,
+          password,
+          role:response.data.user.role.name,
+          userInfo:response.data.user,
+        }));
+        navigate('/dashboard');
       } else {
         toast.error(response.data.message || 'Login failed. Please check your credentials.');
       }
@@ -81,7 +87,6 @@ const Login: React.FC = () => {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div className="d-flex justify-content-center align-items-center vh-100 bg-light fontCss">
@@ -95,7 +100,7 @@ const Login: React.FC = () => {
               id="fullName"
               type="text"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value.trim())}
+              onChange={(e) => setFullName(e.target.value)}
               required
               className="form-control"
               disabled={isLoading}
@@ -115,21 +120,13 @@ const Login: React.FC = () => {
               placeholder="Enter your password"
             />
           </div>
-
           <div className="d-grid">
-            <button
-              type="submit"
-              className="btn btn-danger"
-              disabled={isLoading}
-            >
+            <button type="submit" className="btn btn-danger" disabled={isLoading}>
               {isLoading ? 'Logging in...' : 'Login'}
             </button>
           </div>
           <div className="d-flex justify-content-between align-items-center mt-3">
-            <Link
-              to="/forgot-password"
-              className={`text-danger ${isLoading ? 'disabled' : ''}`}
-            >
+            <Link to="/forgot-password" className={`text-danger ${isLoading ? 'disabled' : ''}`}>
               Forgot Password?
             </Link>
           </div>

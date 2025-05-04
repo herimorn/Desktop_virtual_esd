@@ -1,7 +1,8 @@
 import { contextBridge, ipcRenderer, dialog } from 'electron';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import api from 'pages/api';
+import api from 'pages/api/api';
+import registrationApi from 'pages/api/registrationApi';
 
 import fs = require('fs');
 import path = require('path');
@@ -67,7 +68,7 @@ saveAndSendInvoice: (email, pdfBlob) => ipcRenderer.invoke('save-and-send-invoic
   onSetPasswordResponse: (callback: (response: any) => void) => ipcRenderer.on('set-password-response', (event, response) => callback(response)),
   sendRegistrationData: async (data: any) => {
     try {
-      const response = await api.post('/registrationData', data, {
+      const response = await registrationApi.post('/registrationData', data, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -106,8 +107,6 @@ saveAndSendInvoice: (email, pdfBlob) => ipcRenderer.invoke('save-and-send-invoic
       }
     }
   },
-
-
   fetchEmailConfiguration: () => ipcRenderer.invoke('fetch-email-configuration'),
   addOrUpdateEmailConfiguration: (email: string, password: string) =>
     ipcRenderer.invoke('add-or-update-email-configuration', email, password),
@@ -224,7 +223,7 @@ fetchProfomaById: (profoma_id:any) => ipcRenderer.invoke('fetch-profomasDetails'
   //write the things here..
    getCustomersCount: () => ipcRenderer.invoke('getCustomersCount'),
 
-   RegisterSerial: (formData) => ipcRenderer.invoke('insert-serial', formData),
+   RegisterSerial: (formData: any) => ipcRenderer.invoke('insert-serial', formData),
 
    CheckSerial:() => ipcRenderer.invoke('select-serial'),
    GetSerial: () => ipcRenderer.invoke('get-serial'),
@@ -279,6 +278,8 @@ fetchStyles: () => ipcRenderer.invoke('fetch-styles'),
 declare global {
   interface Window {
     electron: {
+      RegisterSerial(arg0: { formData: { phone: string | null; profilePicture: any; companyName: string; fullName: string; email: string; country: string; currency: string; bankName: never[]; chartOfAccounts: string; fiscalYearStart: string; fiscalYearEnd: string; serialNumber: string; password: string; address: string; street: string; region: string; district: string; pobox: string; personal_username: string; personal_email: string; iform: string; traTin: string; }; }): unknown;
+      sendRegistrationData(arg0: { phone: string | null; accountNumbers: { [key: string]: string; }; companyName: string; fullName: string; email: string; country: string; currency: string; bankName: never[]; chartOfAccounts: string; fiscalYearStart: string; fiscalYearEnd: string; serialNumber: string; password: string; address: string; street: string; region: string; district: string; pobox: string; personal_email: string; iform: string; }): unknown;
       register(arg0: { formData: { serial_number: any; }; }): unknown;
       checkUsersTable(): unknown;
       // ... existing types ...

@@ -28,16 +28,20 @@ import './all_customer.css';
 import Papa from 'papaparse';
 import { Download } from 'react-bootstrap-icons';
 import { FaDownload } from 'react-icons/fa'; // FontAwesome Icon
+import { useSelector } from 'react-redux';
+import customerApi from '../pages/api/customerApi';
 
 interface Customer {
   id: number;
-  name: string;
+
   email: string;
   phone: string;
   address: string;
   tin: string;
   outstanding: number;
-  VRN: string;
+  vrn: string;
+  customer_name: string; // Added for displaying customer name
+  userId: number; // Added for user ID
 }
 
 const AllCustomer: React.FC = () => {
@@ -48,6 +52,10 @@ const AllCustomer: React.FC = () => {
   const [modalType, setModalType] = useState<string>('');
   const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const { fullName, serial,role,company} = useSelector((state: RootState) => state.user);
+  const {userInfo} = useSelector((state: RootState) => state.user);
+  
+  console.log('mzigo wa customer',userInfo);
   const itemsPerPage = 4;
   const fileInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -56,76 +64,47 @@ const AllCustomer: React.FC = () => {
 
   const fetchCustomers = async () => {
     try {
-      const response: Customer[] = await window.electron.fetchCustomers();
-      setCustomers(response);
-      setFilteredCustomers(response);
+      const response = await customerApi.get(`/company/${userInfo.company.id}`);
+      console.log('Fetched customers:', response.data);
+      setCustomers(response.data);
+      setFilteredCustomers(response.data);
     } catch (error) {
       console.error('Error fetching customers:', error);
+      toast.error('Failed to fetch customers');
     }
   };
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    Papa.parse<Customer>(file, {
-      header: true, // Map rows to object using headers
-      skipEmptyLines: true, // Ignore empty rows
-      complete: (results:any) => {
-        const importedCustomers = results.data.map((row: any) => ({
-          id: 0, // ID should be assigned by the backend
-          name: row['Name'] || '',
-          email: row['Email'] || '',
-          phone: row['Phone'] || '',
-          address: row['Address'] || '',
-          tin: row['TIN'] || '',
-          outstanding: parseFloat(row['Outstanding'] || '0'),
-          VRN: row['VRN'] || '',
-        }));
+    const formData = new FormData();
+    formData.append('file', file);
 
-        // Confirmation modal before importing
-        Swal.fire({
-          title: 'Confirm Import',
-          text: `You are about to import ${importedCustomers.length} customers.`,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Import',
-          cancelButtonText: 'Cancel',
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            try {
-              // Integrate with the backend to add customers
-              await Promise.all(
-                importedCustomers.map((customer) =>
-                  window.electron.addCustomer(customer)
-                )
-              );
-              setCustomers((prev) => [...prev, ...importedCustomers]);
-              toast.success('Customers imported successfully!');
-            } catch (error) {
-              console.error('Error importing customers:', error);
-              toast.error('Error importing customers.');
-            }
-          }
-        });
-      },
-      error: (error) => {
-        console.error('Error parsing CSV:', error);
-        toast.error('Error parsing CSV. Ensure it is correctly formatted.');
-      },
-    });
+    try {
+      await customerApi.post('/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      toast.success('Customers imported successfully!');
+      fetchCustomers(); // Refresh the customer list
+    } catch (error) {
+      console.error('Error importing customers:', error);
+      toast.error('Error importing customers. Please check your file format.');
+    }
   };
 
   const handleAdd = () => {
     setModalType('Add');
     setCurrentCustomer({
-      id: 0,
-      name: '',
       email: '',
       phone: '',
       address: '',
       tin: '',
       outstanding: 0,
-      VRN: '',
+      vrn: '',
     });
     setShowModal(true);
   };
@@ -136,7 +115,7 @@ const AllCustomer: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (customer_id: number) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
       text: 'This action cannot be undone.',
@@ -144,17 +123,23 @@ const AllCustomer: React.FC = () => {
       showCancelButton: true,
       confirmButtonColor: '#3085d6',
       cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, delete it!',
+      confirmButtonText: 'Yes, delete it!'
     });
 
     if (result.isConfirmed) {
       try {
-        await window.electron.deleteCustomer(id);
+       
+    // Sending the delete request
+    await customerApi.delete(`/${customer_id}`, {
+      data: {
+        companyId: userInfo.company.id, // Include company_id
+      },
+    });
         toast.success('Customer deleted successfully!');
         fetchCustomers();
       } catch (error) {
-        console.error('Error deleting Customer', error);
-        toast.error('Error deleting Customer.');
+        console.error('Error deleting customer:', error);
+        toast.error('Error deleting customer.');
       }
     }
   };
@@ -165,8 +150,8 @@ const AllCustomer: React.FC = () => {
         const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
         const phoneNumber = parsePhoneNumberFromString(currentCustomer.phone);
 
-        if (!currentCustomer.name.trim()) {
-          toast.error('Name is required.');
+        if (!currentCustomer.customer_name.trim()) {
+          toast.error('Customer Name is required.');
           return;
         }
 
@@ -198,11 +183,23 @@ const AllCustomer: React.FC = () => {
           return;
         }
 
+        // Include user ID, company ID, and customer ID in the payload
+        const payload = {
+          ...currentCustomer,
+          userId: userInfo.id, // Add the user ID
+          companyId: userInfo.company.id, // Add the company ID
+        };
+
         if (modalType === 'Add') {
-          await window.electron.addCustomer(currentCustomer);
+          await customerApi.post('/', payload);
           toast.success('Customer added successfully!');
         } else if (modalType === 'Edit') {
-          await window.electron.updateCustomer(currentCustomer);
+          // Use customer_id explicitly for editing
+          if (!currentCustomer.customer_id) {
+            toast.error('Customer ID is missing for editing.');
+            return;
+          }
+          await customerApi.put(`/${currentCustomer.customer_id}`, payload);
           toast.success('Customer updated successfully!');
         }
 
@@ -210,13 +207,8 @@ const AllCustomer: React.FC = () => {
         fetchCustomers();
       }
     } catch (error) {
-      console.error(
-        `Error ${modalType === 'Add' ? 'adding' : 'updating'} customer:`,
-        error
-      );
-      toast.error(
-        `Error ${modalType === 'Add' ? 'adding' : 'updating'} customer.`
-      );
+      console.error(`Error ${modalType === 'Add' ? 'adding' : 'updating'} customer:`, error);
+      toast.error(`Error ${modalType === 'Add' ? 'adding' : 'updating'} customer.`);
     }
   };
 
@@ -226,7 +218,7 @@ const AllCustomer: React.FC = () => {
     setFilteredCustomers(
       customers.filter(
         (customer: Customer) =>
-          customer.name.toLowerCase().includes(term) ||
+          customer.customer_name.toLowerCase().includes(term) ||
           customer.email.toLowerCase().includes(term) ||
           (parsePhoneNumberFromString(customer.phone)?.number || '')
             .toLowerCase()
@@ -260,15 +252,16 @@ const AllCustomer: React.FC = () => {
   // Define the sample CSV data
   const downloadCSVTemplate = () => {
     const sampleCSVData = [
-      ['No', 'TIN', 'VRN', 'Name', 'Address', 'Email', 'Phone'], // Headers
+      ['No', 'TIN', 'VRN', 'Name', 'Address', 'Email', 'Phone','Added By'], // Headers
       [
         '1',
-        '123456789',
-        '987654321',
+        '33344450',
+        '987654923',
         'Sample User',
         '123 Main St',
         'adva@gmail.com',
-        '123-456-7890',
+        '0746815931',
+        'Claude Chico'
       ], // Example row
     ];
     const csvContent = sampleCSVData.map((row) => row.join(',')).join('\n');
@@ -367,52 +360,49 @@ const AllCustomer: React.FC = () => {
                 <th>Email</th>
                 <th>Phone</th>
                 <th>Address</th>
-                {/* <th>Outstanding Amount</th> */}
+                <th>Added By</th> {/* New column for "Added By" */}
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {getPaginatedCustomers().length > 0 ? (
-                getPaginatedCustomers().map(
-                  (customer: Customer, index: number) => (
-                    <tr key={customer.id}>
-                      <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                      <td>{customer.tin}</td>
-                      <td>{customer.VRN}</td>
-                      <td>{customer.name}</td>
-                      <td>{customer.email}</td>
-                      <td>
-                        {parsePhoneNumberFromString(customer.phone)?.number ||
-                          customer.phone}
-                      </td>
-                      <td>{customer.address}</td>
-                      {/* <td>{format_number(customer.outstanding)}</td> */}
-                      <td style={{ display: 'flex', gap: 10 }}>
-                        <Button
-                          size="sm"
-                          variant="warning"
-                          onClick={() => handleEdit(customer)}
-                        className='viewButton'
-                        >
-                          <i className="bi bi-pencil"></i>
-                        </Button>
-                        <Button
-                         className='deleteButton'
-                          size="sm"
-                          variant="danger"
-                          onClick={() => handleDelete(customer.id)}
-                        >
-                          <i className="bi bi-trash"></i>
-                        </Button>
-                      </td>
-                    </tr>
-                  )
-                )
+                getPaginatedCustomers().map((customer: Customer, index: number) => (
+                  <tr key={customer.id}>
+                    <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                    <td>{customer.tin}</td>
+                    <td>{customer.vrn}</td> {/* Display VRN */}
+                    <td>{customer.customer_name}</td> {/* Display Customer Name */}
+                    <td>{customer.email}</td>
+                    <td>
+                      {parsePhoneNumberFromString(customer.phone)?.number ||
+                        customer.phone}
+                    </td>
+                    <td>{customer.address}</td>
+                    <td>{fullName}</td> {/* Display "Added By" */}
+                    <td style={{ display: 'flex', gap: 10 }}>
+                      <Button
+                        size="sm"
+                        variant="warning"
+                        onClick={() => handleEdit(customer)}
+                        className="viewButton"
+                      >
+                        <i className="bi bi-pencil"></i>
+                      </Button>
+                      <Button
+                        className="deleteButton"
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handleDelete(customer.customer_id)}
+                      >
+                        <i className="bi bi-trash"></i>
+                      </Button>
+                    </td>
+                  </tr>
+                ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="text-center">
-                    <i className="bi bi-file-earmark-excel"></i> No entries
-                    found
+                  <td colSpan={9} className="text-center">
+                    <i className="bi bi-file-earmark-excel"></i> No entries found
                   </td>
                 </tr>
               )}
@@ -454,11 +444,11 @@ const AllCustomer: React.FC = () => {
                       <Form.Control
                         type="text"
                         required
-                        value={currentCustomer?.name || ''}
+                        value={currentCustomer?.customer_name || ''} // Use customer_name
                         onChange={(e) =>
                           setCurrentCustomer({
                             ...currentCustomer,
-                            name: e.target.value,
+                            customer_name: e.target.value, // Update customer_name
                           })
                         }
                       />
@@ -502,10 +492,7 @@ const AllCustomer: React.FC = () => {
                     </Form.Group>
                   </Col>
                   <Col md={6}>
-                    <Form.Group
-                      controlId="formCustomerAddress"
-                      className="mb-5"
-                    >
+                    <Form.Group controlId="formCustomerAddress" className="mb-5">
                       <Form.Label>Customer Address</Form.Label>
                       <Form.Control
                         type="text"
@@ -543,12 +530,11 @@ const AllCustomer: React.FC = () => {
                       <Form.Label>Customer VRN</Form.Label>
                       <Form.Control
                         type="text"
-                        required
-                        value={currentCustomer?.VRN || ''}
+                        value={currentCustomer?.vrn || ''} // Use vrn
                         onChange={(e) =>
                           setCurrentCustomer({
                             ...currentCustomer,
-                            VRN: e.target.value,
+                            vrn: e.target.value, // Update vrn
                           })
                         }
                       />

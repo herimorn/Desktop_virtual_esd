@@ -53,6 +53,13 @@ const dropdownItemStyle = {
         <i className="bi bi-speedometer2"></i> Dashboard
       </NavLink>
       <NavLink
+        to="/category"
+        className="nav-link"
+        style={({ isActive }) => (isActive ? activeStyle : undefined)}
+      >
+        <i className="bi bi-speedometer2"></i> Category
+      </NavLink>
+      <NavLink
         to="/all-customer"
         className="nav-link"
         style={({ isActive }) => (isActive ? activeStyle : undefined)}

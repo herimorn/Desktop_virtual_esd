@@ -53,17 +53,6 @@ export function createTables(): void {
         )
       `);
 
-      // 2. PFX Table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS pfx (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          password TEXT NOT NULL,
-          serialNumber TEXT NOT NULL,
-          signature TEXT NOT NULL,
-          privateKey TEXT NOT NULL
-        )
-      `);
-
       // 3. Invoices Table
       db.run(`
         CREATE TABLE IF NOT EXISTS Invoices (
@@ -86,45 +75,9 @@ export function createTables(): void {
         )
       `);
 
-      // 5. Token Table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS token (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          token TEXT NOT NULL,
-          expiration TIMESTAMP NOT NULL
-        )
-      `);
 
-      // 6. TRA Table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS TRA (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          tin TEXT NOT NULL,
-          certKey TEXT NOT NULL,
-          regId TEXT,
-          username TEXT,
-          password TEXT,
-          gc TEXT,
-          receiptCode TEXT,
-          user TEXT,
-          mobile TEXT,
-          vrn TEXT,
-          tax_office TEXT,
-          street TEXT,
-          city TEXT,
-          registrationDate TEXT,
-          UNIQUE(tin, certKey)
-        )
-      `);
 
-      // 7. Tax Table
-      db.run(`
-        CREATE TABLE IF NOT EXISTS Tax (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          codeType TEXT NOT NULL,
-          codeValue TEXT NOT NULL
-        )
-      `);
+
 
       // 8. Customers Table
       db.run(`
@@ -177,7 +130,26 @@ export function createTables(): void {
           unit NULL,
           FOREIGN KEY (tax_id) REFERENCES Tax(id)
         )
+      `);   db.run(`
+        CREATE TABLE IF NOT EXISTS office_expense(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          category TEXT NOT NULL,
+          ammount FLOAT NOT NULL
+        )
       `);
+
+      db.run(`
+        CREATE TABLE IF NOT EXISTS check_serial(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          serial  TEXT NOT NULL,
+          fullName TEXT  Null
+
+        )
+      `);
+
+
 
       // 11. Proforma & ProformaItems Table - Updated with status and relations
       db.run(`
@@ -293,15 +265,6 @@ export function createTables(): void {
         )
       `);
 
-      db.run(`
-        CREATE TABLE IF NOT EXISTS check_serial(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          serial  TEXT NOT NULL,
-          fullName TEXT  Null
-
-        )
-      `);
 
 
       db.run(`

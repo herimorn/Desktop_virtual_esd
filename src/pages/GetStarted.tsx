@@ -18,115 +18,48 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import 'react-toastify/dist/ReactToastify.css';
 import '../renderer/getStarted.css';
 import { Header } from './Layouts/nav';
+import { RootState } from 'redux/store';
 import { ProgressBar, Spinner, Modal, Button } from 'react-bootstrap';
+import { useSelector } from 'react-redux';
+import "./getStarted.css";
+import loginApi from './api/loginApi';
 
 const GetStarted = () => {
   const [password, setPassword] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showTinModal, setShowTinModal] = useState(false);
-  const [traTin, setTraTin] = useState('');
-  const [certKey, setCertKey] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isPfxConfigured, setIsPfxConfigured] = useState(false);
   const [isTraConfigured, setIsTraConfigured] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const navigate = useNavigate();
-console.log("isPfxConfigured:", isPfxConfigured);
-console.log("isTraConfigured:", isTraConfigured);
+  const { fullName, serial,role,company} = useSelector((state: RootState) => state.user);
+  const {userInfo} = useSelector((state: RootState) => state.user);
+  console.log('user ya id',userInfo?.company.id);
 
 
-  useEffect(() => {
-    const handleUploadProgress = (progress: number) => {
-      setUploadProgress(progress);
-      if (progress === 100) {
-        toast.info('Upload completed');
-      }
-    };
+const   checkPfxStatus = async () => {
+  console.log('company ya id',company);
+  const rensponse =await loginApi.get(`/${userInfo?.company.id}/tra/exists`);
+  console.log('renponse ya tra',rensponse);
+  if(rensponse.status === 200){
+    setIsTraConfigured(true);
+  }
+}
 
-    const handleUploadSuccess = () => {
-      setShowModal(false);
-      setIsPfxConfigured(true);
-      toast.success('Success: Data uploaded successfully');
-    };
+const checkTraStatus = async () => {
+  const rensponse = await loginApi.get(`/${userInfo?.company.id}/pfx/exists`);
+  console.log('renponse ya pxf',rensponse);
+  if(rensponse.status === 200){
+    setIsPfxConfigured(true);
+  }
+}
 
-    const handleUploadError = (errorMessage: string) => {
-      toast.error(`Error: ${errorMessage}`);
-    };
-
-    window.electron.onPfxUploadProgress(handleUploadProgress);
-    window.electron.onPfxUploadSuccess(handleUploadSuccess);
-    window.electron.onPfxUploadError(handleUploadError);
-
-    const checkPfxExists = async () => {
-      const exists = await window.electron.checkPfxExists();
-      setIsPfxConfigured(exists);
-    };
-
-    const checkRegisterTra = async () => {
-      const exists = await window.electron.checkRegisterTra();
-      setIsTraConfigured(exists);
-    };
-
-    checkPfxExists();
-    checkRegisterTra();
-
-    return () => {
-      window.electron.removePfxUploadListeners();
-    };
-  }, [navigate]);
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (file && password) {
-      try {
-        const formData = { fileData: await file.arrayBuffer(), password };
-        await window.electron.uploadPfx(formData);
-      } catch (error: any) {
-        toast.error(`Error: ${error.message}`);
-      }
-    } else {
-      toast.warn('Please fill out all fields.');
-    }
-  };
-
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
-    }
-  };
-
-  const handleSubmitTra = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const tinRegex = /^[0-9]{9}$/;
-    if (!tinRegex.test(traTin)) {
-      toast.error('TRA TIN must be exactly 9 digits.');
-      return;
-    }
-    if (traTin && certKey) {
-      setIsRegistering(true);
-      try {
-        await window.electron.registerTra(traTin, certKey);
-        setIsTraConfigured(true); // Update state to reflect successful registration
-        setShowTinModal(false);
-        toast.success('TRA Registration successful!');
-      } catch (error) {
-        toast.error('Registration failed');
-      } finally {
-        setIsRegistering(false); // Hide loader after completion
-      }
-    } else {
-      toast.warn('Please fill out all fields.');
-    }
-  };
-
-  useEffect(() => {
-    if (isRegistering) {
-      console.log('Registration is in progress...');
-    }
-  }, [isRegistering]);
-
+useEffect(()=>{
+  checkPfxStatus();
+  checkTraStatus();
+},[company]);
   return (
     <Container fluid className="p-0 font"style={{fontFamily:'CustomFont'}}>
       <Header />
@@ -135,7 +68,17 @@ console.log("isTraConfigured:", isTraConfigured);
           <Sidebar />
         </Col>
         <Col md={10} className="pt-5 content" style={{marginTop:20}}>
-          <h3 className="mb-4">Set Up Your Workspace</h3>
+         <div>
+         <h3 className="mb-4">Set Up Your Workspace</h3>
+         <div className="welcome-header d-flex justify-content-end align-items-center mb-4">
+  <h3>
+    Welcome, <span className="username">{fullName}</span>{' '}
+  
+    <span className="user-role">({role})</span>
+  </h3>
+</div>
+
+         </div>
           <Row>
             <Col md={4}>
               <Card className="mb-4 shadow-sm card-hover">
@@ -156,9 +99,9 @@ console.log("isTraConfigured:", isTraConfigured);
                   ) : (
                     <Button
                       className="btn btn-danger"
-                      onClick={() => setShowModal(true)}
+
                     >
-                      Click here to Configure
+                      Not Configure yet
                     </Button>
                   )}
                 </Card.Body>
@@ -257,72 +200,8 @@ console.log("isTraConfigured:", isTraConfigured);
         </Col>
       </Row>
       <ToastContainer />
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Upload PFX</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleSubmit}>
-            <Form.Group controlId="password">
-              <Form.Label>Password</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </Form.Group>
-            <Form.Group controlId="file">
-              <Form.Label>Choose File</Form.Label>
-              <Form.Control type="file" onChange={handleFileChange} required />
-            </Form.Group>
-            {uploadProgress > 0 && (
-              <div>Upload Progress: {uploadProgress}%</div>
-            )}
-            <Button variant="danger" type="submit">
-              Upload
-            </Button>
-          </Form>
-        </Modal.Body>
-      </Modal>
-      <Modal show={showTinModal} onHide={() => setShowTinModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Register TRA</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleSubmitTra}>
-            <Form.Group controlId="traTin">
-              <Form.Label>TRA TIN</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter TRA TIN"
-                value={traTin}
-                onChange={(e) => {
-                  const { value } = e.target;
-                  if (/^\d{0,10}$/.test(value)) {
-                    setTraTin(value);
-                  }
-                }}
-                required
-              />
-            </Form.Group>
-            <Form.Group controlId="certKey">
-              <Form.Label>Certificate Key</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter Certificate Key"
-                value={certKey}
-                onChange={(e) => setCertKey(e.target.value)}
-                required
-              />
-            </Form.Group>
-            <Button variant="danger" type="submit">
-              Register
-            </Button>
-          </Form>
-        </Modal.Body>
-      </Modal>
+
+
     </Container>
   );
 };

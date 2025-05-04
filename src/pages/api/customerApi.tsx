@@ -1,14 +1,15 @@
 import axios from "axios";
 
 
-const API_BASE_URL = 'http://192.168.100.152:5000/api/auth/';
+const API_BASE_URL = 'http://192.168.100.34:5000/customers';
 
-const api = axios.create({
+const customerApi = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
 });
 
-api.interceptors.request.use(
+
+customerApi.interceptors.request.use(
   async (config) => {
 
     return config;
@@ -16,4 +17,4 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-export default api;
+export default customerApi;

@@ -18,7 +18,7 @@ import Pfx from '../pages/Pfx';
 import CustomerForm from '../pages/Customers';
 import Allcustomer from '../pages/Allcustomer';
 import AllProduct from '../pages/products/AllProduct';
-import Supplier from '../pages/Supllier/Supplier';
+import Supplier from '../pages/Supplier/Supplier';
 import PurcheseItems from '../pages/purchase/PurcheseItems';
 import SalesItems from '../pages/sales/SalesItems';
 import Report from '../pages/report/report';
@@ -52,59 +52,53 @@ import { ProfomaCustomazation } from '../pages/profoma/profomaCustomazation';
 import ProformaPreview from 'pages/profoma/proforma_preview';
 import OfficeExp from 'pages/Expenses/OfficeExpe';
 import VerifySerial from 'pages/verify-serial';
+import Category from 'pages/products/category';
 // Import the provider
 //
 
 
 // import Services from '../../changes/pages/services/service';
 
+function Main() {
+  const [redirectToLogin, setRedirectToLogin] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
 
-// function Main() {
-//   const navigate = useNavigate();
-//   const [redirectToLogin, setRedirectToLogin] = useState<boolean | null>(null);
-//   const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const checkTable = async () => {
+      try {
+        const result = await window.electron.CheckSerial();
+        setRedirectToLogin(result[0]?.serial ? true : false);
+      } catch (error) {
+        console.error('Error checking users table:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-//   useEffect(() => {
-//     const checkTable = async () => {
-//       try {
-//         const redirectToLogin = await window.electron.checkUsersTable();
-//         console.log('Redirect to login:', redirectToLogin); // Log the value for debugging
-//         setRedirectToLogin(redirectToLogin);
-//       } catch (error) {
-//         console.error('Error checking users table:', error);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
+    checkTable();
+  }, []);
 
-//     checkTable();
-//   }, []);
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+      </div>
+    );
+  }
 
-//   useEffect(() => {
-//     if (!loading) {
-//       navigate(redirectToLogin ? '/login' : '/verify-serial');
-//     }
-//   }, [redirectToLogin, loading, navigate]);
+  return redirectToLogin ? <Navigate to="/login" replace /> : <Navigate to="/verify-serial" replace />;
+}
 
-//   if (loading) {
-//     return (
-//       <div className="loading-container">
-//         <div className="loading-spinner"></div>
-//       </div>
-//     );
-//   }
-
-//   return null;
-// }
 
 function App() {
   return (
 
       <Router>
         <Routes>
-           {/* <Route path="/" element={<Main />} /> */}
-          <Route path="/" element={<VerifySerial/>} />
+           <Route path="/" element={<Main />} />
+          <Route path="/verify-serial" element={<VerifySerial/>} />
           <Route path="/account" element={<Accounts />} />
+          <Route path="/category" element={<Category/>} />
           <Route path="/configuration" element={<Configuration/>} />
           <Route path="/profitSumary/:id" element={<ProfitLossStatement />} />
           <Route path='/all-product' element={<AllProduct/>} />
